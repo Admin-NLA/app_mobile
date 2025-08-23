@@ -1,7 +1,5 @@
 streamlit
 requests
 Pillow
-qrcode
-opencv-python
-
 numpy
+opencv-python
