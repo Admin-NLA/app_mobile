@@ -1,7 +1,8 @@
-# scanner_mobile.py
+# scanner_mobile.py - VERSIÓN CORREGIDA PARA NGROK
 """
 App Streamlit para escanear QR desde móviles
 Se conecta al servidor HTTP de la app tkinter principal
+VERSIÓN MEJORADA CON DETECCIÓN AUTOMÁTICA DE NGROK
 """
 
 import streamlit as st
@@ -95,21 +96,27 @@ st.markdown("""
 # FUNCIONES AUXILIARES
 # ===========================
 
+def is_ngrok_url(host):
+    """Detectar si es una URL de ngrok"""
+    return 'ngrok.io' in host or 'ngrok.app' in host or 'ngrok-free.app' in host
+
+def build_url(host, port, endpoint):
+    """Construir URL correctamente según si es ngrok o local"""
+    # Limpiar host de prefijos
+    host = host.replace('http://', '').replace('https://', '').strip()
+    
+    if is_ngrok_url(host):
+        # Para ngrok, usar HTTPS y sin puerto
+        return f"https://{host}{endpoint}"
+    else:
+        # Para IPs locales, usar HTTP y puerto específico
+        return f"http://{host}:{port}{endpoint}"
+
 @st.cache_data(ttl=10)  # Cache por 10 segundos
 def test_connection(host, port=5000):
     """Probar conexión con el servidor tkinter"""
     try:
-        # Detectar si es una URL de ngrok o local
-        if 'ngrok.io' in host or 'ngrok.app' in host:
-            # Para ngrok, usar https y puerto estándar
-            if not host.startswith('http'):
-                url = f"https://{host}/health"
-            else:
-                url = f"{host}/health"
-        else:
-            # Para IPs locales, usar http y puerto específico
-            url = f"http://{host}:{port}/health"
-        
+        url = build_url(host, port, "/health")
         response = requests.get(url, timeout=5)
         return response.status_code == 200, response.json() if response.status_code == 200 else None
     except Exception as e:
@@ -118,16 +125,7 @@ def test_connection(host, port=5000):
 def send_qr_to_server(host, port, qr_data, device_info):
     """Enviar QR al servidor para validación"""
     try:
-        # Detectar si es una URL de ngrok o local
-        if 'ngrok.io' in host or 'ngrok.app' in host:
-            # Para ngrok, usar https y puerto estándar
-            if not host.startswith('http'):
-                url = f"https://{host}/validate_attendee"
-            else:
-                url = f"{host}/validate_attendee"
-        else:
-            # Para IPs locales, usar http y puerto específico
-            url = f"http://{host}:{port}/validate_attendee"
+        url = build_url(host, port, "/validate_attendee")
         
         response = requests.post(
             url,
@@ -145,21 +143,13 @@ def send_qr_to_server(host, port, qr_data, device_info):
     except requests.exceptions.ConnectionError:
         return False, {'error': '🔌 Error de conexión - Verifica que el servidor esté activo'}
     except Exception as e:
-        return False, {'error': f'🔥 Error: {str(e)}'}
+        return False, {'error': f'💥 Error: {str(e)}'}
 
 @st.cache_data(ttl=30)  # Cache por 30 segundos
 def get_server_stats(host, port=5000):
     """Obtener estadísticas del servidor"""
     try:
-        # Detectar si es una URL de ngrok o local
-        if 'ngrok.io' in host or 'ngrok.app' in host:
-            if not host.startswith('http'):
-                url = f"https://{host}/get_stats"
-            else:
-                url = f"{host}/get_stats"
-        else:
-            url = f"http://{host}:{port}/get_stats"
-            
+        url = build_url(host, port, "/get_stats")
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             return response.json()
@@ -273,12 +263,24 @@ with st.expander("⚙️ Configuración del Servidor", expanded=not st.session_s
         )
     
     with col2:
-        server_port = st.number_input(
-            "Puerto",
-            value=5000,
-            min_value=1000,
-            max_value=9999
-        )
+        # PUERTO AUTOMÁTICO SEGÚN TIPO DE URL
+        if is_ngrok_url(server_host):
+            server_port = 443  # HTTPS para ngrok
+            st.number_input("Puerto", value=443, disabled=True, help="🌐 Ngrok usa HTTPS automáticamente")
+        else:
+            server_port = st.number_input(
+                "Puerto",
+                value=5000,
+                min_value=1000,
+                max_value=9999,
+                help="🏠 Puerto para red local"
+            )
+
+    # Información automática sobre el tipo de conexión
+    if is_ngrok_url(server_host):
+        st.info("🌐 **MODO NGROK DETECTADO**: Se usará HTTPS automáticamente")
+    else:
+        st.info("🏠 **MODO RED LOCAL**: Asegúrate de estar en la misma WiFi")
 
     # Botones de conexión
     col1, col2, col3 = st.columns(3)
@@ -299,10 +301,17 @@ with st.expander("⚙️ Configuración del Servidor", expanded=not st.session_s
                         - 👥 Asistentes: {health_data.get('attendees_loaded', 0)}
                         - 📊 Escaneos: {health_data.get('scans_count', 0)}
                         - ⏰ Última actualización: {health_data.get('timestamp', 'N/A')[:19]}
+                        - 🔄 Escaneo activo: {'✅ Sí' if health_data.get('scanning_active') else '❌ No'}
                         """)
                 else:
                     st.session_state.connected = False
-                    st.error("❌ No se puede conectar")
+                    st.error("❌ No se puede conectar al servidor")
+                    st.markdown(f"""
+                    **💡 Sugerencias:**
+                    - **Para ngrok:** Verifica que la URL sea correcta (sin http/https al inicio)
+                    - **Para red local:** Asegúrate de que ambos estén en la misma WiFi
+                    - **General:** Verifica que el servidor esté ejecutándose
+                    """)
     
     with col2:
         if st.button("🔄 Auto-detectar", use_container_width=True):
@@ -340,7 +349,8 @@ if current_time - st.session_state.last_connection_check > 15:
 # ===========================
 
 if st.session_state.connected:
-    st.success(f"🔗 Conectado a {st.session_state.server_host}:{server_port}")
+    connection_type = "🌐 NGROK" if is_ngrok_url(st.session_state.server_host) else "🏠 RED LOCAL"
+    st.success(f"🔗 Conectado via {connection_type}: {st.session_state.server_host}")
     
     # Mostrar estadísticas del servidor
     stats = get_server_stats(st.session_state.server_host, server_port)
@@ -367,7 +377,7 @@ if st.session_state.connected:
     st.info("👆 **Instrucciones:** Usa la cámara para capturar el código QR del asistente. El sistema validará automáticamente la información.")
     
     # Pestañas para diferentes métodos de escaneo
-    tab1, tab2, tab3 = st.tabs(["📷 Cámara en Vivo", "📁 Subir Imagen", "📊 Historial"])
+    tab1, tab2, tab3 = st.tabs(["📷 Cámara en Vivo", "🖼️ Subir Imagen", "📊 Historial"])
     
     with tab1:
         st.markdown("**🔴 Captura en tiempo real**")
@@ -483,7 +493,7 @@ if st.session_state.connected:
                     """)
     
     with tab2:
-        st.markdown("**📎 Subir desde galería**")
+        st.markdown("**🔎 Subir desde galería**")
         
         uploaded_file = st.file_uploader(
             "Seleccionar imagen con código QR",
@@ -496,7 +506,7 @@ if st.session_state.connected:
             
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.image(image, caption="📁 Imagen subida", use_column_width=True)
+                st.image(image, caption="🖼️ Imagen subida", use_column_width=True)
             
             # Procesamiento similar al de cámara
             with st.spinner("🔍 Procesando imagen..."):
@@ -555,7 +565,7 @@ if st.session_state.connected:
                 st.success("Historial limpiado")
                 
         else:
-            st.info("📝 No hay escaneos en el historial aún")
+            st.info("📋 No hay escaneos en el historial aún")
     
     # ===========================
     # INFORMACIÓN ADICIONAL
@@ -572,7 +582,12 @@ if st.session_state.connected:
             st.metric("📱 Escaneos Realizados", len(st.session_state.scan_history))
         
         with col2:
-            st.metric("🌐 Servidor", f"{st.session_state.server_host}:{server_port}")
+            connection_details = f"{st.session_state.server_host}"
+            if is_ngrok_url(st.session_state.server_host):
+                connection_details += " (NGROK)"
+            else:
+                connection_details += f":{server_port} (LOCAL)"
+            st.metric("🌐 Servidor", connection_details)
             exitosos = len([r for r in st.session_state.scan_history if r['success'] and r['result'].get('success')])
             st.metric("✅ Escaneos Exitosos", exitosos)
 
@@ -588,18 +603,18 @@ else:
     
     #### 🏠 MISMA RED WiFi:
     1. **🖥️ Ejecuta:** `python main.py`
-    2. **🌐 Usa IP local** como `192.168.1.100:5000`
+    2. **🌐 Usa IP local** como `192.168.1.100`
     3. **🔍 Presiona "Auto-detectar"**
     
-    #### 🌍 ACCESO REMOTO (desde cualquier lugar):
+    #### 🌐 ACCESO REMOTO (desde cualquier lugar):
     1. **🖥️ Ejecuta:** `USE_NGROK=true python main.py`  
     2. **📋 Copia la URL** que aparece (ej: `abc123.ngrok.io`)
     3. **🌐 Úsala SIN puerto** en el campo servidor
-    4. **📱 Puerto:** `80` (automático)
+    4. **📱 Puerto se detecta automáticamente**
     
     ### 💡 URLs de ejemplo:
     - **Local:** `192.168.1.100` + puerto `5000`
-    - **Remoto:** `abc123.ngrok.io` + puerto `80`
+    - **Remoto:** `abc123.ngrok.io` (puerto automático)
     
     ### ⚠️ Si no puedes conectarte:
     - **Local:** Verifica que ambos estén en la misma WiFi
@@ -618,10 +633,11 @@ if st.session_state.connected:
 
 # Footer
 st.markdown("---")
-st.markdown("""
+st.markdown(f"""
 <div style='text-align: center; color: #666; margin-top: 2rem;'>
-    📱 <strong>QR Scanner Móvil v1.0</strong><br>
+    📱 <strong>QR Scanner Móvil v2.0</strong><br>
     Desarrollado para Sistema de Gestión de Asistentes<br>
-    <small>Optimizado para dispositivos móviles</small>
+    <small>✅ Optimizado para Ngrok y conexiones locales</small><br>
+    <small>🌐 Detección automática de tipo de servidor</small>
 </div>
 """, unsafe_allow_html=True)
