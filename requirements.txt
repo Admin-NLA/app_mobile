@@ -3,4 +3,5 @@ requests
 Pillow
 qrcode
 opencv-python
+
 numpy
