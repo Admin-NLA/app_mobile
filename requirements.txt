@@ -4,3 +4,5 @@ qrcode
 opencv-python
 numpy
 pandas
+Flask
+Flask-Cors
