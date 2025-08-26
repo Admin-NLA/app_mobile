@@ -1,8 +1,10 @@
-streamlit
-requests
-qrcode
-opencv-python
-numpy
-pandas
 Flask
 Flask-Cors
+pandas
+Pillow
+qrcode
+streamlit
+requests
+numpy
+gunicorn
+opencv-python-headless
