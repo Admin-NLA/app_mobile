@@ -4,7 +4,7 @@ Backend Flask completo para Render
 Reemplaza la necesidad de ngrok con endpoints completos
 """
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, render_template_string
 from flask_cors import CORS
 import json
 import os
@@ -17,11 +17,8 @@ import tempfile
 import logging
 
 # Configurar logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-app = Flask(__name__)
-CORS(app, origins=["*"])  # Permitir todos los orígenes para desarrollo
 
 # === CONFIGURACIÓN ===
 DATA_DIR = Path("data")
@@ -34,7 +31,7 @@ EXCEL_BACKUP = DATA_DIR / "excel_backup.xlsx"
 # Configuración de tipos
 ATTENDEE_TYPES = {
     'GENERAL': 'Asistente General',
-    'SESSIONS': 'Asistente Sesiones', 
+    'SESSIONS': 'Asistente Sesiones',
     'COURSES': 'Asistente Curso',
     'SCHOLARSHIP': 'Becado',
     'STAFF': 'Staff',
@@ -47,669 +44,417 @@ SCAN_TYPES = {
     'STAND': 'Stand'
 }
 
-# === ALMACENAMIENTO EN MEMORIA ===
+# Almacenamiento de datos en memoria
 class DataStore:
     def __init__(self):
-        self.attendees = []
-        self.scans = []
-        self.load_data()
-    
-    def load_data(self):
-        """Cargar datos desde archivos JSON"""
-        try:
-            if ATTENDEES_FILE.exists():
-                with open(ATTENDEES_FILE, 'r', encoding='utf-8') as f:
-                    self.attendees = json.load(f)
-                logger.info(f"Cargados {len(self.attendees)} asistentes")
-            
-            if SCANS_FILE.exists():
-                with open(SCANS_FILE, 'r', encoding='utf-8') as f:
-                    self.scans = json.load(f)
-                logger.info(f"Cargados {len(self.scans)} escaneos")
-                
-        except Exception as e:
-            logger.error(f"Error cargando datos: {e}")
-    
-    def save_attendees(self):
-        """Guardar asistentes en JSON"""
-        try:
-            with open(ATTENDEES_FILE, 'w', encoding='utf-8') as f:
-                json.dump(self.attendees, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"Error guardando asistentes: {e}")
-    
-    def save_scans(self):
-        """Guardar escaneos en JSON"""
-        try:
-            with open(SCANS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(self.scans, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"Error guardando escaneos: {e}")
-    
-    def find_attendee_by_email(self, email: str):
-        """Buscar asistente por email"""
-        for attendee in self.attendees:
-            if attendee.get('correo', '').lower() == email.lower():
-                return attendee
-        return None
-    
-    def find_attendee_by_name(self, full_name: str):
-        """Buscar asistente por nombre completo"""
-        full_name_lower = full_name.lower()
-        for attendee in self.attendees:
-            nombre = attendee.get('nombre', '')
-            apellido = attendee.get('apellido', '')
-            if f"{nombre} {apellido}".lower() == full_name_lower:
-                return attendee
-        return None
-    
-    def add_scan(self, scan_data: Dict):
-        """Agregar nuevo escaneo"""
-        scan_data['id'] = str(uuid.uuid4())[:8]
-        scan_data['timestamp'] = datetime.now().isoformat()
-        self.scans.append(scan_data)
-        self.save_scans()
-        return scan_data['id']
-    
-    def get_stats(self) -> Dict:
-        """Generar estadísticas"""
-        stats = {
-            'total_attendees': len(self.attendees),
-            'total_scans': len(self.scans),
-            'entry_scans': len([s for s in self.scans if s.get('scan_type') == 'Entrada']),
-            'session_scans': len([s for s in self.scans if s.get('scan_type') == 'Sesión']),
-            'stand_scans': len([s for s in self.scans if s.get('scan_type') == 'Stand']),
-            'daily_stats': {},
-            'type_stats': {},
-            'scholarship_stats': {'total_becados': 0}
-        }
-        
-        # Estadísticas por tipo de asistente
-        for attendee in self.attendees:
-            tipo = attendee.get('tipo', 'Sin tipo')
-            stats['type_stats'][tipo] = stats['type_stats'].get(tipo, 0) + 1
-            
-            if attendee.get('es_becado', False):
-                stats['scholarship_stats']['total_becados'] += 1
-        
-        # Estadísticas por día
-        for day in [1, 2, 3, 4]:
-            day_scans = [s for s in self.scans if s.get('day') == day]
-            unique_attendees = len(set(s.get('attendee_id') for s in day_scans))
-            stats['daily_stats'][f'day_{day}'] = unique_attendees
-        
-        return stats
+        self.attendees = self._load_data(ATTENDEES_FILE)
+        self.scans = self._load_data(SCANS_FILE)
+        self.scans_by_attendee: Dict[str, List[Dict[str, Any]]] = self._group_scans_by_attendee()
 
-# Instancia global del almacén de datos
-data_store = DataStore()
-
-# === UTILIDADES ===
-def parse_vcard(vcard_data: str) -> tuple[str, str]:
-    """Parsear datos de VCard"""
-    email = None
-    name = None
-    
-    try:
-        # Decodificar base64 si es necesario
-        import base64
-        try:
-            decoded = base64.b64decode(vcard_data).decode('utf-8')
-        except:
-            decoded = vcard_data
-        
-        # Parsear VCard
-        for line in decoded.split('\n'):
-            line = line.strip()
-            if line.startswith('EMAIL:'):
-                email = line.replace('EMAIL:', '').strip()
-            elif line.startswith('FN:'):
-                name = line.replace('FN:', '').strip()
-    
-    except Exception as e:
-        logger.error(f"Error parseando VCard: {e}")
-    
-    return email, name
-
-def validate_access(attendee: Dict, scan_type: str) -> tuple[bool, str]:
-    """Validar acceso del asistente según su tipo"""
-    tipo = attendee.get('tipo', '')
-    
-    # Entrada principal - todos pueden acceder
-    if scan_type == 'Entrada':
-        return True, "Acceso autorizado"
-    
-    # Sesiones - solo algunos tipos
-    elif scan_type == 'Sesión':
-        if tipo in ['Asistente General', 'Asistente Sesiones']:
-            return True, "Acceso autorizado a sesión"
-        else:
-            return False, "No autorizado para sesiones"
-    
-    # Stands - todos pueden acceder
-    elif scan_type == 'Stand':
-        return True, "Acceso autorizado a stand"
-    
-    return True, "Acceso autorizado"
-
-def process_excel_data(file_path: Path) -> List[Dict]:
-    """Procesar archivo Excel y convertir a lista de asistentes"""
-    try:
-        df = pd.read_excel(file_path)
-        attendees = []
-        
-        for index, row in df.iterrows():
-            try:
-                attendee = {
-                    'id': str(row.get('A', f"AUTO_{index:04d}")),
-                    'apellido': str(row.get('C', '')).strip(),
-                    'nombre': str(row.get('D', '')).strip(),
-                    'empresa': str(row.get('E', '')).strip(),
-                    'correo': str(row.get('F', '')).strip(),
-                    'telefono': str(row.get('G', '')).strip(),
-                    'curso': str(row.get('H', '')).strip() if pd.notna(row.get('H')) else '',
-                    'sesion': str(row.get('I', '')).strip() if pd.notna(row.get('I')) else '',
-                    'beca': str(row.get('J', '')).strip() if pd.notna(row.get('J')) else '',
-                    'link_crm': str(row.get('K', '')).strip() if pd.notna(row.get('K')) else ''
-                }
-                
-                # Determinar tipo de asistente
-                has_curso = bool(attendee['curso'])
-                has_sesion = bool(attendee['sesion'])
-                has_beca = bool(attendee['beca'])
-                
-                if has_curso and has_sesion:
-                    attendee['tipo'] = 'Asistente General'
-                elif has_sesion:
-                    attendee['tipo'] = 'Asistente Sesiones'
-                elif has_curso:
-                    attendee['tipo'] = 'Asistente Curso'
-                else:
-                    attendee['tipo'] = 'Asistente'
-                
-                attendee['es_becado'] = has_beca
-                attendee['permisos'] = {
-                    'entrada': True,
-                    'sesiones': has_sesion or (has_curso and has_sesion),
-                    'cursos': has_curso,
-                    'stands': True
-                }
-                
-                attendees.append(attendee)
-                
-            except Exception as e:
-                logger.error(f"Error procesando fila {index}: {e}")
-                continue
-        
-        return attendees
-        
-    except Exception as e:
-        logger.error(f"Error procesando Excel: {e}")
+    def _load_data(self, file_path):
+        if file_path.exists():
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
         return []
 
-# === ENDPOINTS PRINCIPALES ===
+    def _save_data(self, file_path, data):
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
-@app.route('/')
-def index():
-    """Página principal del backend"""
-    stats = data_store.get_stats()
-    
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Backend QR Congress - Render</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
-            .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-            .status {{ padding: 15px; border-radius: 5px; margin: 15px 0; }}
-            .healthy {{ background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }}
-            .metric {{ display: inline-block; margin: 10px; padding: 15px; background: #e9ecef; border-radius: 5px; text-align: center; min-width: 120px; }}
-            .metric-value {{ font-size: 2em; font-weight: bold; color: #007bff; }}
-            .metric-label {{ font-size: 0.9em; color: #666; }}
-            .endpoints {{ background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }}
-            .endpoint {{ font-family: monospace; background: #e9ecef; padding: 5px 8px; margin: 3px 0; border-radius: 3px; display: block; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🚀 Backend QR Congress System</h1>
-            
-            <div class="status healthy">
-                <h3>✅ Sistema Operativo</h3>
-                <p><strong>Estado:</strong> Conectado y funcionando</p>
-                <p><strong>Servidor:</strong> Render Cloud</p>
-                <p><strong>Última actualización:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-            </div>
-            
-            <h3>📊 Estadísticas Actuales</h3>
-            <div style="text-align: center;">
-                <div class="metric">
-                    <div class="metric-value">{stats['total_attendees']}</div>
-                    <div class="metric-label">Asistentes</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value">{stats['total_scans']}</div>
-                    <div class="metric-label">Escaneos</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value">{stats['entry_scans']}</div>
-                    <div class="metric-label">Entradas</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value">{stats['session_scans']}</div>
-                    <div class="metric-label">Sesiones</div>
-                </div>
-            </div>
-            
-            <h3>🔗 Endpoints API</h3>
-            <div class="endpoints">
-                <div class="endpoint">GET /health - Verificación de estado</div>
-                <div class="endpoint">POST /upload_attendees - Subir lista de asistentes</div>
-                <div class="endpoint">GET /get_attendees - Obtener asistentes</div>
-                <div class="endpoint">POST /validate_attendee - Validar código QR</div>
-                <div class="endpoint">GET /get_stats - Estadísticas</div>
-                <div class="endpoint">POST /upload_excel - Subir archivo Excel</div>
-                <div class="endpoint">POST /sync_scans - Sincronizar escaneos</div>
-            </div>
-            
-            <h3>📱 URLs para Aplicaciones</h3>
-            <div class="endpoints">
-                <div class="endpoint">App Tkinter: https://{request.host}</div>
-                <div class="endpoint">App Móvil Streamlit: https://{request.host}</div>
-            </div>
-            
-            <div style="text-align: center; margin-top: 30px; color: #666;">
-                <small>Sistema de Gestión de Asistentes con QR - Backend v2.0</small>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    return html
+    def _group_scans_by_attendee(self):
+        grouped = {}
+        for scan in self.scans:
+            attendee_id = scan.get('attendee_id')
+            if attendee_id:
+                if attendee_id not in grouped:
+                    grouped[attendee_id] = []
+                grouped[attendee_id].append(scan)
+        return grouped
 
-@app.route('/health')
-def health_check():
-    """Endpoint de verificación de salud"""
-    try:
-        stats = data_store.get_stats()
-        return jsonify({
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "attendees_loaded": len(data_store.attendees),
-            "scans_count": len(data_store.scans),
-            "server_info": {
-                "platform": "Render",
-                "version": "2.0",
-                "direct_connection": True
-            },
-            "stats": stats
-        }), 200
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
+    def add_attendee(self, attendee):
+        self.attendees.append(attendee)
+        self._save_data(ATTENDEES_FILE, self.attendees)
 
-@app.route('/upload_attendees', methods=['POST'])
-def upload_attendees():
-    """Subir lista de asistentes"""
-    try:
-        data = request.get_json()
-        attendees = data.get('attendees', [])
-        
-        if not attendees:
-            return jsonify({
-                "success": False,
-                "message": "No se recibieron asistentes"
-            }), 400
-        
-        # Reemplazar lista completa
-        data_store.attendees = attendees
-        data_store.save_attendees()
-        
-        logger.info(f"Subidos {len(attendees)} asistentes")
-        
-        return jsonify({
-            "success": True,
-            "message": f"Se subieron {len(attendees)} asistentes exitosamente",
-            "count": len(attendees)
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error subiendo asistentes: {e}")
-        return jsonify({
-            "success": False,
-            "message": f"Error interno: {str(e)}"
-        }), 500
+    def add_scan(self, scan):
+        self.scans.append(scan)
+        self._save_data(SCANS_FILE, self.scans)
+        self._group_scans_by_attendee()  # Re-agrupar después de un nuevo escaneo
 
-@app.route('/get_attendees')
-def get_attendees():
-    """Obtener lista de asistentes"""
-    try:
-        return jsonify(data_store.attendees), 200
-    except Exception as e:
-        logger.error(f"Error obteniendo asistentes: {e}")
-        return jsonify({
-            "error": f"Error obteniendo asistentes: {str(e)}"
-        }), 500
+    def get_attendee_by_id(self, attendee_id):
+        return next((a for a in self.attendees if a.get('id') == attendee_id), None)
 
-@app.route('/validate_attendee', methods=['POST'])
-def validate_attendee():
-    """Validar asistente por código QR - ENDPOINT PRINCIPAL"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({
-                "success": False,
-                "message": "No se recibieron datos JSON"
-            }), 400
-        
-        qr_data = data.get('qr_data')
-        device_info = data.get('device_info', {})
-        scan_config = data.get('scan_config', {
-            'scan_type': 'Entrada',
-            'day': 1,
-            'location': 'Móvil'
-        })
-        
-        if not qr_data:
-            return jsonify({
-                "success": False,
-                "message": "Falta el campo 'qr_data'"
-            }), 400
-        
-        logger.info(f"Validando QR: {qr_data[:50]}...")
-        
-        # Parsear VCard y buscar asistente
-        email, name = parse_vcard(qr_data)
-        attendee = None
-        
-        if email:
-            attendee = data_store.find_attendee_by_email(email)
-        if not attendee and name:
-            attendee = data_store.find_attendee_by_name(name)
-        
-        if not attendee:
-            logger.warning(f"Asistente no encontrado: email={email}, name={name}")
-            return jsonify({
-                "success": False,
-                "message": "QR no reconocido o asistente no encontrado",
-                "debug_info": {
-                    "email_parsed": email,
-                    "name_parsed": name,
-                    "total_attendees": len(data_store.attendees)
-                }
-            }), 404
-        
-        # Validar acceso
-        scan_type = scan_config.get('scan_type', 'Entrada')
-        access_valid, access_message = validate_access(attendee, scan_type)
-        
-        if not access_valid:
-            return jsonify({
-                "success": False,
-                "message": f"Acceso denegado: {access_message}",
-                "attendee": {
-                    "nombre": attendee.get('nombre'),
-                    "apellido": attendee.get('apellido'),
-                    "tipo": attendee.get('tipo')
-                }
-            }), 403
-        
-        # Crear registro de escaneo
-        scan_data = {
-            "attendee_id": attendee.get('id'),
-            "scan_type": scan_type,
-            "day": scan_config.get('day', 1),
-            "location": scan_config.get('location', device_info.get('location', 'Móvil')),
-            "scanned_by": f"móvil_{device_info.get('device_name', 'unknown')}",
-            "notes": f"Escaneado desde {device_info.get('user_agent', 'app móvil')}"
+    def get_attendee_scans(self, attendee_id):
+        return self.scans_by_attendee.get(attendee_id, [])
+
+    def get_all_attendees(self):
+        return self.attendees
+
+    def get_all_scans(self):
+        return self.scans
+
+    def get_stats(self):
+        total_attendees = len(self.attendees)
+        total_scans = len(self.scans)
+
+        # Estadísticas por tipo de asistente
+        type_stats = {}
+        for attendee in self.attendees:
+            attendee_type = attendee.get('tipo', 'UNKNOWN')
+            type_stats[attendee_type] = type_stats.get(attendee_type, 0) + 1
+
+        # Estadísticas por tipo de escaneo
+        scan_type_stats = {}
+        for scan in self.scans:
+            scan_type = scan.get('scan_type', 'UNKNOWN')
+            scan_type_stats[scan_type] = scan_type_stats.get(scan_type, 0) + 1
+
+        # Escaneos recientes
+        recent_scans = sorted(self.scans, key=lambda x: x.get('timestamp', '1970-01-01'), reverse=True)[:10]
+        for scan in recent_scans:
+            attendee = self.get_attendee_by_id(scan.get('attendee_id', ''))
+            scan['attendee_name'] = f"{attendee.get('nombre', '')} {attendee.get('apellido', '')}" if attendee else "Desconocido"
+
+        return {
+            'total_attendees': total_attendees,
+            'total_scans': total_scans,
+            'type_stats': type_stats,
+            'scan_type_stats': scan_type_stats,
+            'recent_scans': recent_scans
         }
-        
-        scan_id = data_store.add_scan(scan_data)
-        
-        logger.info(f"Registro exitoso: {attendee.get('nombre')} {attendee.get('apellido')}")
-        
-        return jsonify({
-            "success": True,
-            "message": f"¡Acceso autorizado para {attendee.get('nombre')} {attendee.get('apellido')}!",
-            "attendee": attendee,
-            "scan_info": {
-                "id": scan_id,
-                "scan_type": scan_type,
-                "day": scan_config.get('day', 1),
-                "timestamp": datetime.now().isoformat(),
-                "location": scan_data["location"]
-            },
-            "stats": data_store.get_stats()
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error validando asistente: {e}")
+
+    def import_attendees_from_excel(self, file):
+        try:
+            df = pd.read_excel(file, engine='openpyxl')
+            imported_attendees = []
+            for _, row in df.iterrows():
+                attendee_id = str(row.iloc[0]).strip().zfill(4)
+                if not attendee_id:
+                    continue
+                imported_attendees.append({
+                    'id': attendee_id,
+                    'apellido': str(row.iloc[1]).strip() if len(df.columns) > 1 else '',
+                    'nombre': str(row.iloc[2]).strip() if len(df.columns) > 2 else '',
+                    'empresa': str(row.iloc[3]).strip() if len(df.columns) > 3 else '',
+                    'correo': str(row.iloc[4]).strip() if len(df.columns) > 4 else '',
+                    'telefono': str(row.iloc[5]).strip() if len(df.columns) > 5 else '',
+                    'curso': str(row.iloc[6]).strip() if len(df.columns) > 6 else '',
+                    'sesion': str(row.iloc[7]).strip() if len(df.columns) > 7 else '',
+                    'beca': str(row.iloc[8]).strip() if len(df.columns) > 8 else '',
+                    'link_crm': str(row.iloc[9]).strip() if len(df.columns) > 9 else '',
+                })
+
+            self.attendees = imported_attendees
+            self._save_data(ATTENDEES_FILE, self.attendees)
+            return True, f"Se importaron {len(imported_attendees)} asistentes."
+        except Exception as e:
+            return False, f"Error al importar Excel: {e}"
+
+app = Flask(__name__)
+CORS(app, origins=["*"])  # Permitir todos los orígenes para desarrollo
+data_store = DataStore()
+
+
+# === RUTAS API ===
+@app.route("/health")
+def health_check():
+    """Endpoint para verificar el estado del servidor."""
+    logger.info("Health check recibido.")
+    return jsonify({
+        "status": "online",
+        "message": "Backend QR Congress System v2.0",
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.route("/attendees")
+def get_attendees():
+    """Retorna la lista completa de asistentes."""
+    logger.info("Solicitud de asistentes recibida.")
+    return jsonify(data_store.get_all_attendees())
+
+@app.route("/scans")
+def get_scans():
+    """Retorna la lista completa de escaneos."""
+    logger.info("Solicitud de escaneos recibida.")
+    return jsonify(data_store.get_all_scans())
+
+@app.route("/attendee/<attendee_id>")
+def get_attendee_details(attendee_id):
+    """Retorna los detalles de un asistente y sus escaneos."""
+    logger.info(f"Solicitud de detalles para asistente ID: {attendee_id}")
+    attendee = data_store.get_attendee_by_id(attendee_id)
+    if not attendee:
+        logger.warning(f"Asistente ID {attendee_id} no encontrado.")
+        return jsonify({"error": "Attendee not found"}), 404
+
+    scans = data_store.get_attendee_scans(attendee_id)
+    return jsonify({
+        "attendee": attendee,
+        "scans": scans
+    })
+
+@app.route("/scan_qr", methods=["POST"])
+def scan_qr():
+    """Endpoint para registrar un nuevo escaneo."""
+    data = request.json
+    attendee_id = data.get('attendee_id')
+    scan_type = data.get('scan_type')
+    day = data.get('day')
+    scanned_by = data.get('scanned_by')
+    location = data.get('location')
+
+    if not all([attendee_id, scan_type, day, scanned_by, location]):
+        logger.error("Datos de escaneo incompletos.")
+        return jsonify({"error": "Missing required scan data"}), 400
+
+    attendee = data_store.get_attendee_by_id(attendee_id)
+    if not attendee:
+        logger.warning(f"Intento de escanear ID {attendee_id} no válido.")
         return jsonify({
             "success": False,
-            "message": f"Error interno del servidor: {str(e)}"
-        }), 500
+            "message": "ID de asistente no válido",
+            "attendee": None
+        }), 404
 
-@app.route('/get_stats')
+    new_scan = {
+        "id": str(uuid.uuid4()),
+        "attendee_id": attendee_id,
+        "scan_type": scan_type,
+        "day": day,
+        "scanned_by": scanned_by,
+        "location": location,
+        "timestamp": datetime.now().isoformat()
+    }
+    data_store.add_scan(new_scan)
+    logger.info(f"Escaneo de {attendee_id} registrado exitosamente.")
+
+    return jsonify({
+        "success": True,
+        "message": "Escaneo registrado exitosamente.",
+        "attendee": attendee,
+        "scan": new_scan
+    })
+
+@app.route("/stats")
 def get_stats():
-    """Obtener estadísticas"""
-    try:
-        return jsonify(data_store.get_stats()), 200
-    except Exception as e:
-        logger.error(f"Error obteniendo estadísticas: {e}")
-        return jsonify({
-            "error": f"Error obteniendo estadísticas: {str(e)}"
-        }), 500
+    """Retorna las estadísticas del sistema."""
+    logger.info("Solicitud de estadísticas recibida.")
+    stats = data_store.get_stats()
+    return jsonify(stats)
 
-@app.route('/upload_excel', methods=['POST'])
-def upload_excel():
-    """Subir y procesar archivo Excel"""
-    try:
-        if 'excel_file' not in request.files:
-            return jsonify({
-                "success": False,
-                "message": "No se encontró archivo Excel"
-            }), 400
-        
-        file = request.files['excel_file']
-        
-        if file.filename == '':
-            return jsonify({
-                "success": False,
-                "message": "No se seleccionó archivo"
-            }), 400
-        
-        # Guardar archivo temporal
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
-            file.save(tmp_file.name)
-            temp_path = Path(tmp_file.name)
-        
-        # Procesar Excel
-        attendees = process_excel_data(temp_path)
-        
-        # Limpiar archivo temporal
-        temp_path.unlink()
-        
-        if not attendees:
-            return jsonify({
-                "success": False,
-                "message": "No se pudieron procesar los datos del Excel"
-            }), 400
-        
-        # Actualizar datos
-        data_store.attendees = attendees
-        data_store.save_attendees()
-        
-        # Guardar backup
-        file.seek(0)
-        file.save(str(EXCEL_BACKUP))
-        
-        logger.info(f"Excel procesado: {len(attendees)} asistentes")
-        
-        return jsonify({
-            "success": True,
-            "message": f"Excel procesado exitosamente: {len(attendees)} asistentes",
-            "count": len(attendees),
-            "backup_saved": True
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error procesando Excel: {e}")
-        return jsonify({
-            "success": False,
-            "message": f"Error procesando Excel: {str(e)}"
-        }), 500
+@app.route("/excel_report")
+def export_excel():
+    """Genera y descarga un reporte Excel de los escaneos."""
+    logger.info("Solicitud de reporte Excel recibida.")
+    
+    scans_data = data_store.get_all_scans()
+    if not scans_data:
+        return jsonify({"error": "No hay escaneos para exportar"}), 404
 
-@app.route('/sync_scans', methods=['POST'])
-def sync_scans():
-    """Sincronizar escaneos"""
-    try:
-        data = request.get_json()
-        scans = data.get('scans', [])
-        
-        # Agregar escaneos nuevos (evitar duplicados)
-        existing_ids = {scan.get('id') for scan in data_store.scans}
-        new_scans = [scan for scan in scans if scan.get('id') not in existing_ids]
-        
-        data_store.scans.extend(new_scans)
-        data_store.save_scans()
-        
-        return jsonify({
-            "success": True,
-            "message": f"Sincronizados {len(new_scans)} nuevos escaneos",
-            "new_scans": len(new_scans),
-            "total_scans": len(data_store.scans)
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error sincronizando escaneos: {e}")
-        return jsonify({
-            "success": False,
-            "message": f"Error sincronizando: {str(e)}"
-        }), 500
+    # Preparar datos para el DataFrame
+    export_data = []
+    for scan in scans_data:
+        attendee = data_store.get_attendee_by_id(scan.get('attendee_id', ''))
+        export_data.append({
+            'ID_Escaneo': scan.get('id', ''),
+            'ID_Asistente': scan.get('attendee_id', ''),
+            'Nombre': f"{attendee.get('nombre', '')} {attendee.get('apellido', '')}" if attendee else "Desconocido",
+            'Empresa': attendee.get('empresa', '') if attendee else "Desconocido",
+            'Tipo_Asistente': attendee.get('tipo', '') if attendee else "Desconocido",
+            'Tipo_Escaneo': scan.get('scan_type', ''),
+            'Día': scan.get('day', ''),
+            'Fecha_Hora': scan.get('timestamp', ''),
+            'Escaneado_Por': scan.get('scanned_by', ''),
+            'Ubicación': scan.get('location', ''),
+            'Notas': scan.get('notes', '')
+        })
 
-@app.route('/admin_dashboard')
-def admin_dashboard():
-    """Panel de administración web"""
+    df = pd.DataFrame(export_data)
+
+    # Crear un archivo temporal para el Excel
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp_file:
+        temp_filename = temp_file.name
+        df.to_excel(temp_filename, index=False, engine='openpyxl')
+
+    logger.info(f"Reporte Excel generado en {temp_filename}")
+    return send_file(temp_filename, as_attachment=True, download_name="reporte_escaneos.xlsx")
+
+
+@app.route("/dashboard")
+def dashboard():
+    """Retorna una página de dashboard HTML para visualización."""
     stats = data_store.get_stats()
     
-    # Generar tabla de asistentes recientes
-    recent_attendees = data_store.attendees[:10]
-    attendees_table = ""
-    for att in recent_attendees:
-        attendees_table += f"""
+    # Generar la tabla de escaneos recientes
+    recent_scans_html = ""
+    for scan in stats.get('recent_scans', []):
+        recent_scans_html += f"""
         <tr>
-            <td>{att.get('id', 'N/A')}</td>
-            <td>{att.get('nombre', 'N/A')} {att.get('apellido', 'N/A')}</td>
-            <td>{att.get('empresa', 'N/A')}</td>
-            <td>{att.get('tipo', 'N/A')}</td>
-            <td>{'Sí' if att.get('es_becado', False) else 'No'}</td>
+            <td>{scan.get('timestamp', '').split('T')[1].split('.')[0]}</td>
+            <td>{scan.get('attendee_name', '')}</td>
+            <td>{SCAN_TYPES.get(scan.get('scan_type', ''), 'Desconocido')}</td>
         </tr>
         """
     
-    # Generar tabla de escaneos recientes
-    recent_scans = sorted(data_store.scans, key=lambda x: x.get('timestamp', ''), reverse=True)[:10]
-    scans_table = ""
-    for scan in recent_scans:
-        scans_table += f"""
-        <tr>
-            <td>{scan.get('id', 'N/A')}</td>
-            <td>{scan.get('attendee_id', 'N/A')}</td>
-            <td>{scan.get('scan_type', 'N/A')}</td>
-            <td>Día {scan.get('day', 'N/A')}</td>
-            <td>{scan.get('timestamp', 'N/A')[:19] if scan.get('timestamp') else 'N/A'}</td>
-        </tr>
-        """
-    
+    # Generar las métricas de tipo de asistente
+    type_metrics_html = "".join([
+        f'<div class="metric"><div class="metric-value">{count}</div><div class="metric-label">{ATTENDEE_TYPES.get(tipo, "Desconocido")}</div></div>'
+        for tipo, count in stats.get('type_stats', {}).items()
+    ])
+
     html = f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="es">
     <head>
-        <title>Panel de Administración - QR Congress</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard QR Congress System</title>
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }}
-            .header {{ background: #007bff; color: white; padding: 20px; text-align: center; }}
-            .container {{ max-width: 1200px; margin: 20px auto; padding: 0 20px; }}
-            .card {{ background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-            .metrics {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }}
-            .metric {{ background: #e9ecef; padding: 20px; border-radius: 5px; text-align: center; }}
-            .metric-value {{ font-size: 2em; font-weight: bold; color: #007bff; }}
-            .metric-label {{ color: #666; margin-top: 5px; }}
-            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
-            th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }}
-            th {{ background-color: #f8f9fa; font-weight: bold; }}
-            .refresh-btn {{ background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }}
-            .refresh-btn:hover {{ background: #218838; }}
-        </style>
-        <script>
-            function refreshPage() {{
-                location.reload();
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+            body {{
+                font-family: 'Inter', sans-serif;
+                background-color: #f4f7f9;
+                color: #333;
+                margin: 0;
+                padding: 0;
             }}
-        </script>
+            .container {{
+                max-width: 960px;
+                margin: 20px auto;
+                padding: 20px;
+            }}
+            .header {{
+                background-color: #2c3e50;
+                color: white;
+                padding: 30px;
+                border-radius: 15px;
+                text-align: center;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            }}
+            .header h1 {{
+                margin: 0;
+                font-weight: 700;
+                font-size: 2.5em;
+            }}
+            .header p {{
+                margin-top: 10px;
+                font-size: 1.1em;
+                opacity: 0.8;
+            }}
+            .stats {{
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+                gap: 20px;
+                margin-bottom: 30px;
+                text-align: center;
+            }}
+            .stat-card {{
+                flex-grow: 1;
+                background-color: #ffffff;
+                padding: 25px;
+                border-radius: 15px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }}
+            .stat-card .value {{
+                font-size: 3em;
+                font-weight: 700;
+                color: #3498db;
+            }}
+            .stat-card .label {{
+                font-size: 1em;
+                font-weight: 600;
+                color: #555;
+            }}
+            .card {{
+                background-color: #ffffff;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }}
+            .card h3 {{
+                margin-top: 0;
+                border-bottom: 2px solid #3498db;
+                padding-bottom: 10px;
+                color: #2c3e50;
+                font-weight: 600;
+            }}
+            .metrics {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 15px;
+            }}
+            .metric {{
+                text-align: center;
+                background-color: #ecf0f1;
+                padding: 15px;
+                border-radius: 10px;
+            }}
+            .metric-value {{
+                font-size: 1.5em;
+                font-weight: 700;
+                color: #2c3e50;
+            }}
+            .metric-label {{
+                font-size: 0.8em;
+                font-weight: 500;
+                color: #666;
+                margin-top: 5px;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }}
+            th, td {{
+                padding: 12px 15px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }}
+            th {{
+                background-color: #34495e;
+                color: white;
+                font-weight: 600;
+            }}
+            tr:hover {{
+                background-color: #f5f5f5;
+            }}
+            tr:last-child td {{
+                border-bottom: none;
+            }}
+        </style>
     </head>
     <body>
-        <div class="header">
-            <h1>📊 Panel de Administración QR Congress</h1>
-            <button class="refresh-btn" onclick="refreshPage()">🔄 Actualizar</button>
-        </div>
-        
         <div class="container">
-            <div class="metrics">
-                <div class="metric">
-                    <div class="metric-value">{stats['total_attendees']}</div>
-                    <div class="metric-label">Total Asistentes</div>
+            <div class="header">
+                <h1>Sistema de Gestión de Asistentes</h1>
+                <p>Dashboard de Escaneos y Estadísticas</p>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="value">{stats.get('total_attendees', 0)}</div>
+                    <div class="label">Total Asistentes</div>
                 </div>
-                <div class="metric">
-                    <div class="metric-value">{stats['total_scans']}</div>
-                    <div class="metric-label">Total Escaneos</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value">{stats['entry_scans']}</div>
-                    <div class="metric-label">Entradas</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value">{stats['session_scans']}</div>
-                    <div class="metric-label">Sesiones</div>
+                <div class="stat-card">
+                    <div class="value">{stats.get('total_scans', 0)}</div>
+                    <div class="label">Total Escaneos</div>
                 </div>
             </div>
             
             <div class="card">
-                <h3>👥 Asistentes Recientes</h3>
+                <h3>📜 Escaneos Recientes</h3>
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Nombre</th>
-                            <th>Empresa</th>
-                            <th>Tipo</th>
-                            <th>Becado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {attendees_table}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="card">
-                <h3>📱 Escaneos Recientes</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
+                            <th>Hora</th>
                             <th>Asistente</th>
-                            <th>Tipo</th>
-                            <th>Día</th>
-                            <th>Timestamp</th>
+                            <th>Tipo de Escaneo</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {scans_table}
+                        {recent_scans_html}
                     </tbody>
                 </table>
             </div>
@@ -717,12 +462,7 @@ def admin_dashboard():
             <div class="card">
                 <h3>📊 Estadísticas por Tipo</h3>
                 <div class="metrics">
-                    {
-                        ''.join([
-                            f'<div class="metric"><div class="metric-value">{count}</div><div class="metric-label">{tipo}</div></div>'
-                            for tipo, count in stats.get('type_stats', {}).items()
-                        ])
-                    }
+                    {type_metrics_html}
                 </div>
             </div>
             
@@ -734,22 +474,18 @@ def admin_dashboard():
     </body>
     </html>
     """
-    return html
+    return render_template_string(html)
 
 # === CONFIGURACIÓN PARA RENDER ===
 if __name__ == '__main__':
     # Render proporciona el puerto mediante la variable de entorno PORT
     port = int(os.environ.get('PORT', 5000))
-    
+
     logger.info("🚀 Iniciando Backend QR Congress en Render")
     logger.info(f"📡 Puerto: {port}")
     logger.info(f"👥 Asistentes cargados: {len(data_store.attendees)}")
     logger.info(f"📊 Escaneos cargados: {len(data_store.scans)}")
-    
-    # Ejecutar servidor
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=False,  # Siempre False en producción
-        threaded=True
-    )
+
+    # Ejecutar la aplicación Flask
+    # Con host='0.0.0.0' para que sea accesible desde la red
+    app.run(host='0.0.0.0', port=port, debug=False)
