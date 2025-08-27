@@ -1,10 +1,6 @@
-Flask
-Flask-Cors
-pandas
-Pillow
-qrcode
 streamlit
 requests
+Pillow
+qrcode
+opencv-python
 numpy
-gunicorn
-opencv-python-headless
