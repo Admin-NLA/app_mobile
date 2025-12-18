@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"></script>
+    <title>Escáner QR</title>
+    
+</head>
+
+<style>body{display: flex;flex-direction: column;gap: 1.2rem;}</style>
+
+<body class="bg-light">
+
+    <header class="bg-light">
+        <nav class="navbar navbar-dark bg-dark navbar-expand-lg">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar">
+                        <span class="navbar-toggler-icon "></span>
+                    </button>
+                    <span class="navbar-brand ms-2">
+                        <img src="https://cmc-latam.com/wp-content/uploads/2022/01/Logo-CMC-Recurso-26.png" alt=""
+                            width="100em">
+                    </span>
+                </div>
+
+                <div class="collapse navbar-collapse" id="navbar">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.home') }}" class="nav-link">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active" aria-current="page">Escáner</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.statistics') }}" class="nav-link">Estadísticos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('auth.signup') }}" class="nav-link">Registrar</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="navbar-nav">
+                    <span class="navbar-text text-white">Usuario: {{ username }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light ms-3">Cerrar Sesión</a>
+                </div>
+            </div>
+        </nav>
+        <div class="p-3 text-center bg-body-tertiary">
+            <h1 class="mb-3">Escáner QR</h1>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div id="camera-container">
+        </div>
+
+        <div class="slider-container">
+            <input type="range" class="slider" id="zoomControl" min="1" max="3" step="0.05" value="1" disabled>
+        </div>
+
+        <div id="controls">
+            <button id="start-scan">Iniciar Escaneo</button>
+            <button id="stop-scan">Detener Escaneo</button>
+        </div>
+
+        <p id="msg"></p>
+
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+
+</body>
+</html>
