@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Usuario</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+</head>
+<body class="bg-light">
+
+    <header>
+        <nav class="navbar navbar-dark bg-dark navbar-expand-lg">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar">
+                        <span class="navbar-toggler-icon "></span>
+                    </button>
+                    <span class="navbar-brand ms-2">
+                        <img src="https://cmc-latam.com/wp-content/uploads/2022/01/Logo-CMC-Recurso-26.png" alt=""
+                            width="100em">
+                    </span>
+                </div>
+
+                <div class="collapse navbar-collapse" id="navbar">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.home') }}" class="nav-link active" aria-current="page">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.scanner') }}" class="nav-link">Escáner</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.statistics') }}" class="nav-link">Estadísticos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active" aria-current="page">Registrar</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="navbar-nav">
+                    <span class="navbar-text text-white">Usuario: {{ username }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light ms-3">Cerrar Sesión</a>
+                </div>
+            </div>
+
+        </nav>
+
+        <div class="p-3 text-center bg-body-tertiary">
+            <h1 class="mb-3">Registrar Usuario</h1>
+        </div>
+
+    </header>
+
+    <section class="page-section">
+        <div class="container-fluid d-flex flex-column flex-md-row text-center">
+            <div class="register-card container">
+
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert alert-danger py-2">
+                        {{ messages[0] }}
+                    </div>
+                {% endif %}
+                {% endwith %}
+
+                <form action="{{ url_for('auth.signup') }}" method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Usuario</label>
+                        <input type="text" name="username" id="username" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Correo</label>
+                        <input type="email" name="email" id="email" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" name="password" id="password" class="form-control" required>
+                    </div>
+
+                    <button class="btn btn-dark w-100 mt-2" type="submit">Registrar</button>
+
+                </form>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

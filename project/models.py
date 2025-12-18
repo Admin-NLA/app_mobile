@@ -1,0 +1,23 @@
+from . import db
+from sqlalchemy.dialects.postgresql import JSONB
+from flask_login import UserMixin
+
+class User(UserMixin,db.Model):
+    __tablename__ = "users"
+
+    user_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), unique=True, nullable = False)
+    email = db.Column(db.String(255), unique=True, nullable = False)
+    password = db.Column(db.String, nullable = False)
+
+    def get_id(self):
+        return (self.user_id)
+
+class Stats(db.Model):
+    __tablename__ = "statistics"
+    
+    stats_id = db.Column(db.Integer, primary_key=True)
+    linked_file_name = db.Column(db.String(255), unique=True, nullable = False)
+    stats_file = db.Column(JSONB)
+    created_at = db.Column(db.DateTime, nullable = False)
+    updated_at = db.Column(db.DateTime, nullable = False)

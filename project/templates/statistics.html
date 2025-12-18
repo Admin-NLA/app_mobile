@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+</head>
+<body class="bg-light">
+    <header class="bg-light">
+        <nav class="navbar navbar-dark bg-dark navbar-expand-lg sticky-top">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar">
+                        <span class="navbar-toggler-icon "></span>
+                    </button>
+                    <span class="navbar-brand ms-2">
+                        <img src="https://cmc-latam.com/wp-content/uploads/2022/01/Logo-CMC-Recurso-26.png" alt=""
+                            width="100em">
+                    </span>
+                </div>
+
+                <div class="collapse navbar-collapse" id="navbar">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.home') }}" class="nav-link" aria-current="page">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.scanner') }}" class="nav-link">Escáner</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active">Estadísticos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('auth.signup') }}" class="nav-link">Registrar</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="navbar-nav">
+                    <span class="navbar-text text-white">Usuario: {{ username }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light ms-3">Cerrar Sesión</a>
+                </div>
+            </div>
+
+        </nav>
+
+        <div class="p-3 text-center bg-body-tertiary">
+            <h1 class="mb-3">Estadísticos</h1>
+        </div>
+    </header>
+
+    <section>
+
+        <div class="container-fluid d-flex flex-row mb-3 gap-3">
+            <select class="form-select form-select-sm" id="statsSelector">
+                <option selected disabled hidden>Escoge un Archivo de Estadísticas</option>
+                {% for file in stats_files %}
+                    <option value="1">{{ file }}</option>
+                {% endfor %}
+            </select>
+
+        </div>
+
+        <div class="container-fluid d-flex flex-row mb-3 gap-3">
+            <select class="form-select form-select-sm" id="selector">
+                <option selected>Escoge una Tabla</option>
+                <option value="generalStats">Estadísticas Generales</option>
+                <option value="attendeeStats">Asistentes</option>
+                <option value="dailyStats">Estadísticas por Día</option>
+            </select>
+
+            <input type="text" class="form-control" id="searchInput" placeholder="Buscar" disabled>
+        </div>
+
+        <div class="table-responsive mx-2 overflow-auto">
+
+            <table class="table table-dark table-striped align-middle text-center" id="generalTable">
+                <thead>
+                    <tr>
+                        <th>Total de Asistentes</th>
+                        <th>Asistentes Generales</th>
+                        <th>Asistentes Solo Sesiones</th>
+                        <th>Asistentes Solo Cursos</th>
+                        <th>Asistentes Becados</th>
+                        <th>Becados Generales</th>
+                        <th>Becados Sesiones</th>
+                        <th>Becados Cursos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <table class="table table-dark table-striped align-middle text-center" id="generalTable1">
+                <thead>
+                    <tr>
+                        <th>Total A. Escaneados</th>
+                        <th>Total Becados Escaneadas</th>
+                        <th>A. Generales</th>
+                        <th>A. Solo Sesiones</th>
+                        <th>A. Solo Cursos</th>
+                        <th>Becados Generales</th>
+                        <th>Becados Sesiones</th>
+                        <th>Becados Cursos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <table class="table table-dark table-striped align-middle text-center" id="attendeesTable">
+                <thead >
+                    <tr>
+                        <th style="z-index: 4;">ID</th>
+                        <th>Agente</th>
+                        <th>Apellido(s)</th>
+                        <th>Nombre(s)</th>
+                        <th>Empresa</th>
+                        <th>Tipo de Asistente</th>
+                        <th>Beca</th>
+                        <th>Día 1</th>
+                        <th>Día 2</th>
+                        <th>Día 3</th>
+                        <th>Día 4</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                </tbody>
+                
+            </table>
+
+            <table class="table table-dark table-striped align-middle text-center" id="dailyTable">
+                <thead>
+                    <tr>
+                        <th>Día</th>
+                        <th>Generales</th>
+                        <th>Solo Sesiones</th>
+                        <th>Solo Cursos</th>
+                        <th>Total Esperado</th>
+                        <th>Total Real</th>
+                        <th>Becas Escaneadas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                </tbody>
+            </table>
+
+        </div>
+    </section>
+
+    <script>
+
+        //const stats_p = document.getElementById("stats")
+        const generalTable = document.getElementById("generalTable");
+        const generalTable1 = document.getElementById("generalTable1");
+        const attendeesTable = document.getElementById("attendeesTable");
+        const dailyTable = document.getElementById("dailyTable");
+
+        const searchInput = document.getElementById("searchInput");
+        const statsSelector = document.getElementById("statsSelector");
+
+        const tableMap = {
+            generalStats: [generalTable, generalTable1],
+            attendeeStats:[attendeesTable],
+            dailyStats: [dailyTable]
+        };
+
+        var lastData = {};
+
+        statsSelector.addEventListener('change', updateData);
+
+        document.getElementById("selector").addEventListener('change', function() {
+            Object.values(tableMap).forEach(li => li.forEach(tbl => tbl.style.display = 'none') );
+
+            if(this.value && tableMap[this.value]) {
+                for (let i = 0; i < tableMap[this.value].length; i++) {
+                    tableMap[this.value][i].style.display = 'table';
+                }
+
+                if(this.value === "attendeeStats") {
+                    searchInput.disabled = false;
+                }else{
+                    searchInput.disabled = true;
+                }
+            }
+        });
+
+        searchInput.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#attendeesTable tbody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                console.log(text)
+                console.log(filter)
+                row.classList.toggle('hide', !text.includes(filter));
+            });
+        });
+
+        function isEmpty(obj) {
+            if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                return Object.keys(obj).length === 0;
+            }
+            throw new TypeError("Expected a plain object")
+        }
+
+        function updateData() {
+            var selection = statsSelector.options[statsSelector.selectedIndex].text;
+
+            fetch('/statistics', {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({selected_option: selection})
+            })
+            .then(response => response.json())
+            .then(data => {
+                    if (!isEmpty(data)) {
+
+                        if( data !== lastData) {
+
+                            stats = data.stats;
+                            attendees = stats.attendees_scan_stats;
+
+                            attendeesTable.querySelector("tbody").innerHTML = "";
+
+                            //stats_p.innerHTML = JSON.stringify(data)
+                            for (let nAttendee = 0; nAttendee < attendees.length; nAttendee++) {
+                                const newRow = attendeesTable.tBodies[0].insertRow();
+                                const idCell = newRow.insertCell(0);
+                                const agentCell = newRow.insertCell(1);
+                                const lastnameCell = newRow.insertCell(2);
+                                const nameCell = newRow.insertCell(3);
+                                const companyCell = newRow.insertCell(4);
+                                const typeCell = newRow.insertCell(5);
+                                const scholarshipCell = newRow.insertCell(6);
+                                const day1Cell = newRow.insertCell(7);
+                                const day2Cell = newRow.insertCell(8);
+                                const day3Cell = newRow.insertCell(9);
+                                const day4Cell = newRow.insertCell(10);
+
+                                idCell.textContent = attendees[nAttendee].ID;
+                                agentCell.textContent = attendees[nAttendee].Agente;
+                                lastnameCell.textContent = attendees[nAttendee]["Apellido(s)"];
+                                nameCell.textContent = attendees[nAttendee]["Nombre(s)"];
+                                companyCell.textContent = attendees[nAttendee].Empresa;
+                                typeCell.textContent = attendees[nAttendee]["Tipo de Asistente"];
+                                scholarshipCell.textContent = attendees[nAttendee].Beca;
+                                day1Cell.textContent = attendees[nAttendee]["Día 1"];
+                                day2Cell.textContent = attendees[nAttendee]["Día 2"];
+                                day3Cell.textContent = attendees[nAttendee]["Día 3"];
+                                day4Cell.textContent = attendees[nAttendee]["Día 4"];
+
+                            }
+
+                            generalRow = generalTable.tBodies[0].rows[0];
+                            generalRow.cells[0].textContent = stats.total_attendees;
+                            generalRow.cells[1].textContent = stats.type_stats.general;
+                            generalRow.cells[2].textContent = stats.type_stats.sessions;
+                            generalRow.cells[3].textContent = stats.type_stats.courses;
+                            generalRow.cells[4].textContent = stats.scholarship_stats.total_scholarship_holders;
+                            generalRow.cells[5].textContent = stats.scholarship_stats.general_scholarship_holders;
+                            generalRow.cells[6].textContent = stats.scholarship_stats.sessions_scholarship_holders;
+                            generalRow.cells[7].textContent = stats.scholarship_stats.courses_scholarship_holders;
+
+                            generalRow1 = generalTable1.tBodies[0].rows[0];
+                            generalRow1.cells[0].textContent = stats.total_scanned_attendees;
+                            generalRow1.cells[1].textContent = stats.scanned_scholarship_holders.total;
+                            generalRow1.cells[2].textContent = stats.scanned_attendees_by_type.general;
+                            generalRow1.cells[3].textContent = stats.scanned_attendees_by_type.sessions;
+                            generalRow1.cells[4].textContent = stats.scanned_attendees_by_type.courses;
+                            generalRow1.cells[5].textContent = stats.scanned_scholarship_holders.general;
+                            generalRow1.cells[6].textContent = stats.scanned_scholarship_holders.sessions;
+                            generalRow1.cells[7].textContent = stats.scanned_scholarship_holders.courses;
+
+                            dailyTable.querySelector("tbody").innerHTML = "";
+
+                            for (let day = 1; day <= 4; day++) {
+                                const newRow = dailyTable.tBodies[0].insertRow();
+                                const dayCell = newRow.insertCell(0);
+                                const generalCell = newRow.insertCell(1);
+                                const coursesCell = newRow.insertCell(2);
+                                const sessionsCell = newRow.insertCell(3);
+                                const eTotalCell = newRow.insertCell(4);
+                                const totalCell = newRow.insertCell(5);
+                                const scholarshipsCell = newRow.insertCell(6);
+
+                                dayCell.textContent = `Día ${day}`
+                                generalCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].general;
+                                coursesCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].courses;
+                                sessionsCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].sessions;
+                                eTotalCell.textContent = stats.daily_stats[`day_${day}`].expected;
+                                totalCell.textContent = stats.daily_stats[`day_${day}`].actual.length
+                                scholarshipsCell.textContent = stats.daily_scanned_sh[`day_${day}`]
+                            }
+                            lastData = data
+                        }
+                    }
+                    
+                });
+        }
+        //setInterval(updateData, 2000)
+        updateData();
+    </script>
+
+</body>
+</html>
