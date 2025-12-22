@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-conn_string = os.getenv("DATABASE_URL")
 
 db = SQLAlchemy()
 
@@ -16,6 +15,7 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SERVICE_TOKEN'] = os.getenv("SERVICE_TOKEN")
     CORS(app)
 
     db.init_app(app)
@@ -34,5 +34,8 @@ def create_app():
 
     from .main import main as main_bp
     app.register_blueprint(main_bp)
+
+    from .scan import scan as scan_bp
+    app.register_blueprint(scan_bp)
 
     return app

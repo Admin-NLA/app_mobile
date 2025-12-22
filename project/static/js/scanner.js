@@ -4,6 +4,46 @@ const zoomSlider = document.getElementById("zoomControl");
 let track;
 
 let isScanning = false;
+let pollingInterval = null;
+
+async function onQrScanned(decodedText, decodedResult) {
+    scanner.stop();
+
+    if(pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+    const response = await fetch("/scan", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({qr_data: decodedText})
+    });
+
+    if (!response.ok) {
+        throw new Error("Error al enviar el escaneo");
+    }
+
+    const { scan_id } = await response.json();
+
+    pollingInterval = setInterval(() => {
+        checkScanStatus(scan_id);
+    }, 1000);
+}
+
+async function checkScanStatus(scanId) {
+    const response = await fetch(`/scan-status/${scanId}`);
+    const data = await response.json();
+
+    if (data.status === "pending") {
+        return;
+    }
+
+    clearInterval(pollingInterval);
+
+    alert(data.message);
+    scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
+}
 
 document.getElementById("start-scan").onclick = async () => {
     if (isScanning) return;
@@ -14,7 +54,10 @@ document.getElementById("start-scan").onclick = async () => {
     const qrCodeSuccessCallback = (decodedText, decodedResult) => {
         //alert("QR: " + decodedText, decodedResult)
         scanner.stop();
-        fetch("/scanner", {
+
+        
+
+        fetch("/scan", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -24,13 +67,14 @@ document.getElementById("start-scan").onclick = async () => {
         .then(response => response.json())
         .then(data => {
             alert(data.message);
-            scanner.start({facingMode: {exact: "environment"}}, config, qrCodeSuccessCallback);
+            scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
         })
         .catch(error => {
             alert("Error al enviar data" + error)
-            scanner.start({facingMode: {exact: "environment"}}, config, qrCodeSuccessCallback);
+            scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
         });
     };
+
     message.style.color = "#000";
     message.textContent = "Escaneando...";
 
@@ -39,7 +83,7 @@ document.getElementById("start-scan").onclick = async () => {
         const devices = await Html5Qrcode.getCameras();
         if (devices && devices.length) {
 
-            await scanner.start({facingMode: {exact: "environment"}}, config, qrCodeSuccessCallback);
+            await scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
 
             const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}})
             track = stream.getVideoTracks()[0];

@@ -17,7 +17,27 @@ class Stats(db.Model):
     __tablename__ = "statistics"
     
     stats_id = db.Column(db.Integer, primary_key=True)
-    linked_file_name = db.Column(db.String(255), unique=True, nullable = False)
-    stats_file = db.Column(JSONB)
+    location = db.Column(db.String(50), nullable = False)
+    year = db.Column(db.Integer, nullable = False)
+    stats = db.Column(JSONB)
     created_at = db.Column(db.DateTime, nullable = False)
     updated_at = db.Column(db.DateTime, nullable = False)
+
+class Event(db.Model):
+    __tablename__ = "events"
+
+    event_id = db.Column(db.Integer, primary_key=True)
+    location = db.Column(db.String(50), nullable = False)
+    year = db.Column(db.Integer, nullable = False)
+    start_date = db.Column(db.Date, nullable = False)
+    end_date = db.Column(db.Date, nullable = False)
+
+class Scans(db.Model):
+    __tablename__ = "scans"
+
+    scan_id = db.Column(db.String(255), primary_key=True)
+    attendee_id = db.Column(db.String(10), nullable = False)
+    entries = db.Column(JSONB)
+    sessions = db.Column(JSONB)
+    location = db.Column(db.String(50), nullable = False)
+    year = db.Column(db.Integer, nullable = False)

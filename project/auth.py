@@ -1,6 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_login import login_user, logout_user, login_required
 from bcrypt import checkpw, gensalt, hashpw
+from functools import wraps
+
 from .models import User
 from . import db
 
@@ -59,3 +61,16 @@ def signup_post():
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
+
+
+def service_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        token = request.headers.get("X-Service-Token")
+
+        if token != current_app.config["SERVICE_TOKEN"]:
+            return jsonify({"error": "Acceso no Autorizado"}), 401
+        
+        return f(*args, **kwargs)
+    
+    return wrapper
