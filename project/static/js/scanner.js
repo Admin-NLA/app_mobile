@@ -3,6 +3,7 @@ const message = document.getElementById("msg");
 const zoomSlider = document.getElementById("zoomControl");
 let track;
 
+const config = {fps: 30,qrbox: document.getElementById("camera-container").offsetWidth};
 let isScanning = false;
 let pollingInterval = null;
 
@@ -49,7 +50,6 @@ document.getElementById("start-scan").onclick = async () => {
     if (isScanning) return;
 
     isScanning = true;
-    const config = {fps: 30,qrbox: document.getElementById("camera-container").offsetWidth};
 
     const qrCodeSuccessCallback = (decodedText, decodedResult) => {
         //alert("QR: " + decodedText, decodedResult)
