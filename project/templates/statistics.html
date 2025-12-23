@@ -235,7 +235,7 @@
         }
 
         function updateData() {
-            var selection = statsSelector.options[statsSelector.selectedIndex].text;
+            var selection = statsSelector.value
 
             fetch('/statistics', {
                 method: "POST",
@@ -330,7 +330,7 @@
                     
                 });
         }
-        //setInterval(updateData, 2000)
+        setInterval(updateData, 2000)
         updateData();
     </script>
 

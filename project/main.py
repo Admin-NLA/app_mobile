@@ -36,7 +36,7 @@ def scanner_post():
 def statistics():
 
     stats_records = Stats.query.all()
-    stats_files = [f"{record.location} {record.year}" for record in stats_records]
+    stats_files = [{"id": str(record.stats_id), "name": f"{record.location} {record.year}"} for record in stats_records]
 
     return render_template('statistics.html', username=current_user.name, stats_files=stats_files)
 
@@ -45,11 +45,9 @@ def statistics():
 def statistics_post():
 
     data = request.get_json()
-    name:str = data.get('selected_option', '')
-    parts = name.strip().split()
-    location, year = parts
+    stats_id:int = int(data.get('selected_option', ''))
 
-    stats_record = Stats.query.filter_by(location=location, year=int(year)).first()
+    stats_record = Stats.query.filter_by(stats_id = stats_id).first()
     stats = {}
 
     if stats_record:
