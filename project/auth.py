@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
-from flask_login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required, current_user
 from bcrypt import checkpw, gensalt, hashpw
 from functools import wraps
 
@@ -31,7 +31,7 @@ def login_post():
 @auth.route('/signup')
 @login_required
 def signup():
-    return render_template("signup.html")
+    return render_template("signup.html", username=current_user.name)
 
 @auth.route('/signup', methods=['POST'])
 @login_required

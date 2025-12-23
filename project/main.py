@@ -36,7 +36,7 @@ def scanner_post():
 def statistics():
 
     stats_records = Stats.query.all()
-    stats_files = [record.linked_file_name for record in stats_records]
+    stats_files = [f"{record.location} {record.year}" for record in stats_records]
 
     return render_template('statistics.html', username=current_user.name, stats_files=stats_files)
 
@@ -45,12 +45,14 @@ def statistics():
 def statistics_post():
 
     data = request.get_json()
-    file_name:str = data.get('selected_option', '')
+    name:str = data.get('selected_option', '')
+    parts = name.strip().split()
+    location, year = parts
 
-    stats_record = Stats.query.filter_by(linked_file_name=file_name).first()
+    stats_record = Stats.query.filter_by(location=location, year=int(year)).first()
     stats = {}
 
     if stats_record:
-        stats = stats_record.stats_file
+        stats = stats_record.stats
 
     return jsonify({'stats': stats})
