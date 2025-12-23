@@ -45,12 +45,13 @@ def statistics():
 def statistics_post():
 
     data = request.get_json()
-    stats_id:int = int(data.get('selected_option', ''))
-
-    stats_record = Stats.query.filter_by(stats_id = stats_id).first()
+    option:str = data.get('selected_option', '')
     stats = {}
 
-    if stats_record:
-        stats = stats_record.stats
+    if option:
+        stats_id = int(option)
+        stats_record = Stats.query.filter_by(stats_id = stats_id).first()
+        if stats_record:
+            stats = stats_record.stats
 
     return jsonify({'stats': stats})

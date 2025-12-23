@@ -60,9 +60,9 @@
 
         <div class="container-fluid d-flex flex-row mb-3 gap-3">
             <select class="form-select form-select-sm" id="statsSelector">
-                <option selected disabled hidden>Escoge un Archivo de Estadísticas</option>
+                <option selected disabled hidden value="">Escoge un Archivo de Estadísticas</option>
                 {% for file in stats_files %}
-                    <option value="1">{{ file }}</option>
+                    <option value="{{ file['id'] }}">{{ file['name'] }}</option>
                 {% endfor %}
             </select>
 
