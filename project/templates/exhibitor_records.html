@@ -2,54 +2,46 @@
 
 {% block title %}Escáner{% endblock %}
 
-{% block b_e_records %}<a href="#" class="nav-link active" aria-current="page">Registros</a>{% endblock %}
+{% block b_e_records %}<a href="#" class="nav-link active" aria-current="page">Contactos</a>{% endblock %}
 
 {% block header_title %}
-    <h1 class="mb-3">Registros de Escaneo</h1>
+    <h1 class="mb-3">Contactos Guardados</h1>
 {% endblock %}
 
 {% block content %}
+
+<section class="content-section">
+
+    <div class="d-flex justify-content-between mb-3 mx-3" id="topDiv">
+        <span class="text-muted" id="activeEventLabel">
+            {% if active_event %}
+                Registros para: <strong>{{ active_event.location }} {{ active_event.year }}</strong>
+                <span class="small">({{ active_event.start_date.strftime('%d/%m/%Y') }} – {{ active_event.end_date.strftime('%d/%m/%Y') }})</span>
+            {% else %}
+                No hay evento activo para la fecha de hoy.
+            {% endif %}
+        </span>
+
     
-    <section>
-        <div class="container-fluid d-flex flex-row mb-3 gap-3">
-            <select class="form-select form-select-sm" id="recordsSelector">
-                <option selected disabled hidden value="">Escoge una edición de CMC</option>
-                {% for event in events %}
-                    <option value="{{ file['id'] }}">{{ file['name'] }}</option>
-                {% endfor %}
-            </select>
+    </div>
 
-        </div>
+    <div class="table-responsive mx-2 overflow-auto">
+        <table class="table table-bordered border-dark align-middle text-center full-table" id="recordsTable" style="display:table;flex: 1;">
+            <thead>
+                <tr>
+                    <th style="width: 3rem;"></th>
+                    <th>Nombre Completo</th>
+                    <th>Correo</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    
+</section>
 
-        <div class="container-fluid d-flex flex-row mb-3 gap-3">
-            <select class="form-select form-select-sm" id="selector">
-                <option selected disabled hidden>Escoge una Tabla</option>
-                <option value="generalStats">Estadísticas Generales</option>
-                <option value="attendeeStats">Asistentes</option>
-                <option value="dailyStats">Estadísticas por Día</option>
-            </select>
-
-            <input type="text" class="form-control" id="searchInput" placeholder="Buscar" disabled>
-        </div>
-
-        <div class="table-responsive mx-2 overflow-auto">
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>N° de Registro</th>
-                        <th>Nombre Completo</th>
-                        <th>Correo</th>
-                    </tr>
-                </thead>
-            </table>
-
-        </div>
-
-    </section>
-
-    <template>
-        
-    </template>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ url_for('static', filename='js/records.js') }}"></script>
 
 {% endblock %}
