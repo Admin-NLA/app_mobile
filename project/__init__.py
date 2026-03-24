@@ -38,4 +38,16 @@ def create_app():
     from .scan import scan as scan_bp
     app.register_blueprint(scan_bp)
 
+    # Evento activo disponible en toda la app (caché por día, una consulta por fecha)
+    from flask import g
+    from .events import set_active_event_for_request
+
+    @app.before_request
+    def inject_active_event():
+        set_active_event_for_request()
+
+    @app.context_processor
+    def inject_active_event_into_templates():
+        return {"active_event": g.get("active_event")}
+
     return app

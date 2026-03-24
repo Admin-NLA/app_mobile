@@ -2,7 +2,7 @@
 
 {% block title %}Escáner{% endblock %}
 
-{% block b_scanner %}<a href="#" class="nav-link active" aria-current="page">Escáner</a>{% endblock %}
+{% block b_e_scanner %}<a href="#" class="nav-link active" aria-current="page">Escáner</a>{% endblock %}
 
 {% block header_title %}
     <h1 class="mb-3">Escáner QR</h1>
@@ -25,8 +25,6 @@
         <p id="msg"></p>
 
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
-{% endblock %}

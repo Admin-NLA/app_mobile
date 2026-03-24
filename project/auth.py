@@ -1,13 +1,22 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, abort
 from flask_login import login_user, logout_user, login_required, current_user
-from bcrypt import checkpw, gensalt, hashpw
 from functools import wraps
 
 from .models import User
 from . import db
 
-
 auth = Blueprint('auth', __name__)
+
+def require_user_type(*allowed_types):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            user_type = current_user.user_type
+            if user_type not in allowed_types:
+                abort(403)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 @auth.route('/login')
 def login():
@@ -16,12 +25,12 @@ def login():
 @auth.route('/login', methods=['POST'])
 def login_post():
     username = request.form.get("username")
-    password = request.form.get("password").encode('utf-8')
+    password = request.form.get("password")
     remember = True if request.form.get('remember') else False
 
     user = User.query.filter_by(name=username).first()
 
-    if not user or not checkpw(password, user.password.encode('utf-8')):
+    if not user or not user.check_password(password):
         flash("Error en Credenciales: Intenta de Nuevo")
         return redirect(url_for('auth.login'))
 
@@ -30,31 +39,32 @@ def login_post():
 
 @auth.route('/signup')
 @login_required
+@require_user_type("ADMIN")
 def signup():
-    return render_template("signup.html", username=current_user.name)
+    return render_template("signup.html")
 
 @auth.route('/signup', methods=['POST'])
 @login_required
+@require_user_type("ADMIN")
 def signup_post():
-    username = request.form.get("username")
-    email = request.form.get("email")
-    password = request.form.get("password").encode('utf-8')
+    data = request.get_json()
+    username = data.get("username")
+    email = data.get("email")
+    company = data.get("companySelector")
+    password = data.get("password")
+    user_type = data.get("typeSelector")
 
     user = User.query.filter_by(name=username).first()
 
     if user:
-        flash('Usuario ya registrado')
-        return redirect(url_for('auth.signup'))
-    
-    salt = gensalt()
-    hashed_password = hashpw(password, salt).decode('utf-8')
-    
-    new_user = User(email=email, name=username, password=hashed_password)
+        return jsonify({"success": False, "message": "Usuario ya registrado"}), 400
+
+    new_user = User(email=email, name=username, company=company, user_type=user_type)
+    new_user.set_password(password)
     db.session.add(new_user)
     db.session.commit()
 
-    flash('Usuario registrado exitosamente')
-    return redirect(url_for('auth.signup'))
+    return jsonify({"success": True, "message": "Usuario registrado exitosamente"}), 200
 
 @auth.route('/logout')
 @login_required

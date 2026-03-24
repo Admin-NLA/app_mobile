@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Escáner{% endblock %}
+
+{% block b_e_records %}<a href="#" class="nav-link active" aria-current="page">Registros</a>{% endblock %}
+
+{% block header_title %}
+    <h1 class="mb-3">Registros de Escaneo</h1>
+{% endblock %}
+
+{% block content %}
+    
+    <section>
+        <div class="container-fluid d-flex flex-row mb-3 gap-3">
+            <select class="form-select form-select-sm" id="recordsSelector">
+                <option selected disabled hidden value="">Escoge una edición de CMC</option>
+                {% for event in events %}
+                    <option value="{{ file['id'] }}">{{ file['name'] }}</option>
+                {% endfor %}
+            </select>
+
+        </div>
+
+        <div class="container-fluid d-flex flex-row mb-3 gap-3">
+            <select class="form-select form-select-sm" id="selector">
+                <option selected disabled hidden>Escoge una Tabla</option>
+                <option value="generalStats">Estadísticas Generales</option>
+                <option value="attendeeStats">Asistentes</option>
+                <option value="dailyStats">Estadísticas por Día</option>
+            </select>
+
+            <input type="text" class="form-control" id="searchInput" placeholder="Buscar" disabled>
+        </div>
+
+        <div class="table-responsive mx-2 overflow-auto">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>N° de Registro</th>
+                        <th>Nombre Completo</th>
+                        <th>Correo</th>
+                    </tr>
+                </thead>
+            </table>
+
+        </div>
+
+    </section>
+
+    <template>
+        
+    </template>
+
+{% endblock %}

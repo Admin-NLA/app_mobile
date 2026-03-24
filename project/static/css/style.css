@@ -6,7 +6,10 @@
 
 body{
     min-height: 100svh;
+    max-height: 100svh;
     width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .login-card, .register-card{
@@ -30,7 +33,7 @@ h2{
 }
 
 .icons {
-    font-size:15rem;
+    font-size:12rem;
 }
 
 #camera-container{
@@ -121,7 +124,10 @@ button{
 }
 
 .table-responsive {
-    max-height: 380px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 .table-responsive::-webkit-scrollbar {
@@ -152,4 +158,23 @@ tr.hide {
     position: sticky;
     top: 0;
     z-index: 3;
+}
+
+.content-section{
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.alert-input{
+    width: 100% !important;
+    max-width: 400px;
+    box-sizing: border-box;
+}
+
+.alert-textarea{
+    width: 100% !important;
+    max-width: 400px;
+    min-height: 80px;
 }
