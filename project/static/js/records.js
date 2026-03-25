@@ -135,7 +135,7 @@ function renderRecords() {
 
         
         scheduleBtn.addEventListener("click", async () => {
-            const scheduleResult = await Swal.fire({
+            const scheduleResult = Swal.fire({
                 theme: "dark",
                 title: `<strong>${record.appointment ? "Actualizar Cita" : "Agendar Cita"}</strong>`,
                 html: `

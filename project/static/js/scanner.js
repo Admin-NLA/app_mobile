@@ -386,7 +386,7 @@ async function showNotesAlert(isNewContact, record) {
 }
 
 async function showScheduleAlert(isNewContact, record) {
-    const scheduleResult = await Swal.fire({
+    const scheduleResult = Swal.fire({
         theme: "dark",
         title: `<strong>${record.appointment ? "Actualizar Cita" : "Agendar Cita"}</strong>`,
         html: `
