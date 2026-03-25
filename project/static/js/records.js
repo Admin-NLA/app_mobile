@@ -135,7 +135,7 @@ function renderRecords() {
 
         
         scheduleBtn.addEventListener("click", async () => {
-            const scheduleResult = Swal.fire({
+            const scheduleResult = await Swal.fire({
                 theme: "dark",
                 title: `<strong>${record.appointment ? "Actualizar Cita" : "Agendar Cita"}</strong>`,
                 html: `
@@ -331,35 +331,6 @@ async function exportRecords() {
         });
 }
 
-function downloadAppointment(record) {
-
-    const dateStr = record.appointment.date.replace(/-/g, "");
-    const hourStr = record.appointment.hour.replace(":", "") + "00";
-
-    const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//CMC//ES
-BEGIN:VEVENT
-UID:${record.appointment.appointment_id}-cmc-app
-DTSTAMP:${dateStr}T${hourStr}
-DTSTART:${dateStr}T${hourStr}
-DTEND:${dateStr}T${hourStr}
-SUMMARY:Cita con ${record.name}
-DESCRIPTION:${escapeICSText(record.appointment.description)}
-LOCATION:${escapeICSText(record.appointment.location)}
-END:VEVENT
-END:VCALENDAR`;
-
-    const blob = new Blob([icsContent], { type: "text/calendar" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `cita_${record.name}.ics`;
-    link.click();
-    link.remove();
-
-    URL.revokeObjectURL(link.href);
-}
-
 function downloadAndShareAppointment(record) {
 
     const dateStr = record.appointment.date.replace(/-/g, "");
@@ -390,6 +361,11 @@ END:VCALENDAR`;
 
     URL.revokeObjectURL(link.href);
 
+    alert(JSON.stringify({
+        canShare: navigator.canShare ? navigator.canShare({ files: [file] }) : null,
+        secure: window.isSecureContext
+    }));
+
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         navigator.share({
             title: "Cita",
@@ -400,7 +376,7 @@ END:VCALENDAR`;
             Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text: `No se compartió la cita: ${err}`,
+                text: `No se compartió la cita`,
                 icon: "error"
             });
         });

@@ -386,7 +386,7 @@ async function showNotesAlert(isNewContact, record) {
 }
 
 async function showScheduleAlert(isNewContact, record) {
-    const scheduleResult = Swal.fire({
+    const scheduleResult = await Swal.fire({
         theme: "dark",
         title: `<strong>${record.appointment ? "Actualizar Cita" : "Agendar Cita"}</strong>`,
         html: `
@@ -513,6 +513,11 @@ END:VCALENDAR`;
 
     URL.revokeObjectURL(link.href);
 
+    alert(JSON.stringify({
+        canShare: navigator.canShare ? navigator.canShare({ files: [file] }) : null,
+        secure: window.isSecureContext
+    }));
+
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
             title: "Cita",
@@ -523,7 +528,7 @@ END:VCALENDAR`;
             await Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text: `No se compartió la cita: ${err}`,
+                text: `No se compartió la cita`,
                 icon: "error"
             });
         });
