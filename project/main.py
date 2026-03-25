@@ -67,7 +67,6 @@ def exhibitor_scanner_post():
 @login_required
 @require_user_type("ADMIN", "EXHIBITOR")
 def exhibitor_records():
-    # active_event ya está en el contexto de la plantilla vía context_processor
     return render_template("exhibitor_records.html")
 
 
@@ -75,10 +74,7 @@ def exhibitor_records():
 @login_required
 @require_user_type("ADMIN", "EXHIBITOR")
 def exhibitor_records_post():
-    data = request.get_json(silent=True) or {}
-    consultation_date = data.get("consultation_date")  # opcional: "YYYY-MM-DD"
-    # Usar evento en g (caché de hoy) si no piden otra fecha
-    active_event = g.active_event if not consultation_date else get_active_event(consultation_date)
+    active_event = g.active_event
     records = []
     event_payload = None
 
@@ -116,7 +112,7 @@ def exhibitor_records_post():
             "total_records": len(records),
         }
 
-    return jsonify({"event": event_payload, "records": records})
+    return jsonify({"event": event_payload, "records": records, "current_user": current_user.company})
 
 @main.route('/export-records')
 @login_required
@@ -159,6 +155,3 @@ def export_exhibitor_records():
         download_name= f"Contactos CMC {active_event.location} {active_event.year}",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
-

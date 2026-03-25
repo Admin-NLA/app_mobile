@@ -2,6 +2,7 @@ const scanner = new Html5Qrcode("camera-container");
 const message = document.getElementById("msg");
 const zoomSlider = document.getElementById("zoomControl");
 let track;
+let c_user;
 
 const config = {fps: 30,qrbox: document.getElementById("camera-container").offsetWidth};
 let isScanning = false;
@@ -149,6 +150,8 @@ async function onQrScanned(decodedText, decodedResult) {
                     });
                     return;
                 }
+
+                c_user = data.current_user;
 
                 if (data.status === "repeated") {
                     showContactAlert(false, data.record);
@@ -400,7 +403,9 @@ async function showScheduleAlert(isNewContact, record) {
         `,
         focusConfirm: false,
         showCancelButton: true,
+        showDenyButton: true,
         confirmButtonText: record.appointment ? "Actualizar Cita" : "Guardar Cita",
+        denyButtonText: "Descargar y Compartir",
         confirmButtonColor: "#4caf50",
         cancelButtonText: "Cancelar",
         preConfirm: () => {
@@ -412,6 +417,11 @@ async function showScheduleAlert(isNewContact, record) {
                 return false;
             }
             return { date, hour, description };
+        },
+        preDeny: () => {
+            if (!record.appointment) {
+                Swal.showValidationMessage("No hay cita almacenada para descargar");
+            }
         }
     });
 
@@ -452,8 +462,73 @@ async function showScheduleAlert(isNewContact, record) {
             icon: "success"
         }).then(() => showScheduleAlert(isNewContact, record));
 
-    } else {
+    } else if (scheduleResult.isDenied) {
+        downloadAndShareAppt(isNewContact, record);
+    } else if(scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
     }
     
+}
+
+function escapeICSText(text) {
+  return (text || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
+}
+
+
+async function downloadAndShareAppt(isNewContact, record) {
+    const dateStr = record.appointment.date.replace(/-/g, "");
+    const hourStr = record.appointment.hour.replace(":", "") + "00";
+
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//CMC//ES
+BEGIN:VEVENT
+UID:${record.appointment.appointment_id}-cmc-app
+DTSTAMP:${dateStr}T${hourStr}
+DTSTART:${dateStr}T${hourStr}
+DTEND:${dateStr}T${hourStr}
+SUMMARY:Cita con ${record.name}
+DESCRIPTION:${escapeICSText(record.appointment.description)}
+LOCATION:${escapeICSText(record.appointment.location)}
+END:VEVENT
+END:VCALENDAR`;
+
+    const blob = new Blob([icsContent], { type: "text/calendar" });
+    const file = new File([blob], `cita_${record.name}_con_${c_user}.ics`, { type: "text/calendar" });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `cita_${record.name}.ics`;
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(link.href);
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+            title: "Cita",
+            text: `Cita ${c_user} con ${record.name}\nFecha: ${record.appointment.date}\nHora: ${record.appointment.hour}\nLugar:${record.appointment.location}`,
+            files: [file]
+        }).catch(async err => {
+            console.error("Error al compartir:", err);
+            await Swal.fire({
+                theme: "dark",
+                title: "<strong>ERROR</strong>",
+                text: "No se compartió la cita",
+                icon: "error"
+            });
+        });
+    } else {
+        await Swal.fire({
+            theme: "dark",
+            title: "<strong>ADVERTENCIA</strong>",
+            text: "No es posible compartir la cita\nSeleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
+            icon: "warning"
+        });
+    }
+    showScheduleAlert(isNewContact, record);
 }

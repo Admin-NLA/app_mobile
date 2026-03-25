@@ -127,11 +127,11 @@ def process_exhibitor_scan():
     )
 
     if record:
-        return jsonify({"result": True, "status": "repeated", "record": record.to_dict(), "notes": record.notes, "message": "Contacto ya guardado"})
+        return jsonify({"result": True, "status": "repeated", "record": record.to_dict(), "notes": record.notes, "message": "Contacto ya guardado", "current_user": current_user.company})
 
     result, record = insert_scan_record(attendee, event.event_id)
     
-    return jsonify({"result": result,"status": "new", "record": record, "message": "Contacto almacenado exitosamente"})
+    return jsonify({"result": result,"status": "new", "record": record, "message": "Contacto almacenado exitosamente", "current_user": current_user.company})
 
 @scan.route('/update-exhibitor-record-notes', methods=["POST"])
 @login_required

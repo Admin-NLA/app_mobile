@@ -2,6 +2,7 @@ const recordsTable = document.getElementById("recordsTable");
 const activeEventLabel = document.getElementById("activeEventLabel");
 let records;
 let eventName;
+let c_user;
 
 function toggleExportButton(activeEvent){
     const div =  document.getElementById("topDiv");
@@ -153,7 +154,7 @@ function renderRecords() {
                 showCancelButton: true,
                 showDenyButton: true,
                 confirmButtonText: record.appointment ? "Actualizar Cita" : "Guardar Cita",
-                denyButtonText: "Guardar Cita en Calendario",
+                denyButtonText: "Descargar y Compartir",
                 confirmButtonColor: "#4caf50",
                 cancelButtonText: "Cancelar",
                 preConfirm: () => {
@@ -205,7 +206,7 @@ function renderRecords() {
                 });
 
             } else if(scheduleResult.isDenied){
-                download_appointment(record)
+                downloadAndShareAppointment(record)
             }
         });
         
@@ -269,6 +270,7 @@ function loadRecords() {
     })
         .then((response) => response.json())
         .then((data) => {
+            c_user = data.current_user;
             updateEventLabel(data.event);
             records = data.records;
             renderRecords();
@@ -318,7 +320,7 @@ async function exportRecords() {
         });
 }
 
-function download_appointment(record) {
+function downloadAppointment(record) {
 
     if (!record.appointment || !record.appointment.appointment_id) {
         Swal.fire({
@@ -346,14 +348,77 @@ LOCATION:${escapeICSText(record.appointment.location)}
 END:VEVENT
 END:VCALENDAR`;
 
-const blob = new Blob([icsContent], { type: "text/calendar" });
-const link = document.createElement("a");
-link.href = URL.createObjectURL(blob);
-link.download = `cita_${record.name}.ics`;
-link.click();
-link.remove();
+    const blob = new Blob([icsContent], { type: "text/calendar" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `cita_${record.name}.ics`;
+    link.click();
+    link.remove();
 
-URL.revokeObjectURL(link.href);
+    URL.revokeObjectURL(link.href);
+}
+
+function downloadAndShareAppointment(record) {
+    if (!record.appointment) {
+        Swal.fire({
+            theme: "dark",
+            title: "<strong>ERROR</strong>",
+            text: "No hay cita registrada",
+            icon: "error"
+        });
+        return;
+    }
+
+    const dateStr = record.appointment.date.replace(/-/g, "");
+    const hourStr = record.appointment.hour.replace(":", "") + "00";
+
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//CMC//ES
+BEGIN:VEVENT
+UID:${record.appointment.appointment_id}-cmc-app
+DTSTAMP:${dateStr}T${hourStr}
+DTSTART:${dateStr}T${hourStr}
+DTEND:${dateStr}T${hourStr}
+SUMMARY:Cita con ${record.name}
+DESCRIPTION:${escapeICSText(record.appointment.description)}
+LOCATION:${escapeICSText(record.appointment.location)}
+END:VEVENT
+END:VCALENDAR`;
+
+    const blob = new Blob([icsContent], { type: "text/calendar" });
+    const file = new File([blob], `cita_${record.name}_con_${c_user}.ics`, { type: "text/calendar" });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `cita_${record.name}.ics`;
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(link.href);
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({
+            title: "Cita",
+            text: `Cita ${c_user} con ${record.name}\nFecha: ${record.appointment.date}\nHora: ${record.appointment.hour}\nLugar:${record.appointment.location}`,
+            files: [file]
+        }).catch(err => {
+            console.error("Error al compartir:", err);
+            Swal.fire({
+                theme: "dark",
+                title: "<strong>ERROR</strong>",
+                text: "No se compartió la cita\nSeleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
+                icon: "error"
+            });
+        });
+    } else {
+        Swal.fire({
+            theme: "dark",
+            title: "<strong>ADVERTENCIA</strong>",
+            text: "No es posible compartir la cita\nSeleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
+            icon: "warning"
+        });
+    }
 }
 
 function escapeICSText(text) {

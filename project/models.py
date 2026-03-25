@@ -50,8 +50,8 @@ class Stats(db.Model):
     stats_id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('events.event_id'), nullable=False)
     stats = db.Column(JSONB)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False)
     
     event = db.relationship('Event', back_populates = 'stats_ev')
     
