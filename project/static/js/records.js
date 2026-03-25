@@ -361,15 +361,6 @@ END:VCALENDAR`;
 }
 
 function downloadAndShareAppointment(record) {
-    if (!record.appointment) {
-        Swal.fire({
-            theme: "dark",
-            title: "<strong>ERROR</strong>",
-            text: "No hay cita registrada",
-            icon: "error"
-        });
-        return;
-    }
 
     const dateStr = record.appointment.date.replace(/-/g, "");
     const hourStr = record.appointment.hour.replace(":", "") + "00";
@@ -389,7 +380,7 @@ END:VEVENT
 END:VCALENDAR`;
 
     const blob = new Blob([icsContent], { type: "text/calendar" });
-    const file = new File([blob], `cita_${record.name}_con_${c_user}.ics`, { type: "text/calendar" });
+    const file = new File([blob], `cita_${record.name}_con_${c_user}.ics`, { type: "application/octet-stream" });
 
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -409,7 +400,7 @@ END:VCALENDAR`;
             Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text: "No se compartió la cita. Seleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
+                text: `No se compartió la cita: ${err}`,
                 icon: "error"
             });
         });
