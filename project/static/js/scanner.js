@@ -408,18 +408,11 @@ async function showScheduleAlert(isNewContact, record) {
         denyButtonText: "Descargar y Compartir",
         confirmButtonColor: "#4caf50",
         cancelButtonText: "Cancelar",
-        didOpen: () => {
-            const denyBtn = Swal.getDenyButton();
-
-            denyBtn.addEventListener("click", (e) => {
-                e.preventDefault();
-
-                if (!record.appointment) {
-                    Swal.showValidationMessage("No hay cita guardada");
-                    return;
-                }
-                downloadAndShareAppointment(record);
-            });
+        preDeny: () => {
+            if (!record.appointment) {
+                Swal.showValidationMessage("No hay cita guardada");
+                return;
+            }
         },
         preConfirm: () => {
             const date = document.getElementById('appointmentDate').value;
@@ -471,6 +464,15 @@ async function showScheduleAlert(isNewContact, record) {
         }).then(() => showScheduleAlert(isNewContact, record));
     } else if(scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
+    } else if (scheduleResult.isDenied) {
+        const btn = document.createElement("button");
+        btn.style.display = "none";
+        document.body.appendChild(btn);
+        btn.addEventListener("click", () => {
+            downloadAndShareAppointment(record);
+            btn.remove();
+        });
+        btn.click();
     }
     
 }
