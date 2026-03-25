@@ -408,6 +408,19 @@ async function showScheduleAlert(isNewContact, record) {
         denyButtonText: "Descargar y Compartir",
         confirmButtonColor: "#4caf50",
         cancelButtonText: "Cancelar",
+        didOpen: () => {
+            const denyBtn = Swal.getDenyButton();
+
+            denyBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+
+                if (!record.appointment) {
+                    Swal.showValidationMessage("No hay cita guardada");
+                    return;
+                }
+                downloadAndShareAppointment(record);
+            });
+        },
         preConfirm: () => {
             const date = document.getElementById('appointmentDate').value;
             const hour = document.getElementById('appointmentHour').value;
@@ -418,11 +431,6 @@ async function showScheduleAlert(isNewContact, record) {
             }
             return { date, hour, description };
         },
-        preDeny: () => {
-            if (!record.appointment) {
-                Swal.showValidationMessage("No hay cita almacenada para descargar");
-            }
-        }
     });
 
     if (scheduleResult.isConfirmed) {
@@ -461,9 +469,6 @@ async function showScheduleAlert(isNewContact, record) {
             text: responseData.message || "Cita guardada",
             icon: "success"
         }).then(() => showScheduleAlert(isNewContact, record));
-
-    } else if (scheduleResult.isDenied) {
-        downloadAndShareAppt(isNewContact, record);
     } else if(scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
     }
@@ -502,7 +507,7 @@ END:VCALENDAR`;
 
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `cita_${record.name}.ics`;
+    link.download = `cita_${record.name}_con_${c_user}.ics`;
     link.click();
     link.remove();
 
@@ -518,7 +523,7 @@ END:VCALENDAR`;
             await Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text: "No se compartió la cita",
+                text: "No se compartió la cita. Seleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
                 icon: "error"
             });
         });
@@ -526,7 +531,7 @@ END:VCALENDAR`;
         await Swal.fire({
             theme: "dark",
             title: "<strong>ADVERTENCIA</strong>",
-            text: "No es posible compartir la cita\nSeleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
+            text: "No es posible compartir la cita. Seleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
             icon: "warning"
         });
     }

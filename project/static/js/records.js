@@ -118,7 +118,7 @@ function renderRecords() {
         const saveBtn =  document.getElementById(`saveBtn${record.e_scan_id}`);
 
         notesTA.addEventListener("input", () => {
-            if (notesTA.value !== record.notes) {
+            if (notesTA.value.trim() !== (record.notes || "")) {
                 saveBtn.disabled = false;
                 changed = true;
             } else {
@@ -157,6 +157,19 @@ function renderRecords() {
                 denyButtonText: "Descargar y Compartir",
                 confirmButtonColor: "#4caf50",
                 cancelButtonText: "Cancelar",
+                didOpen: () => {
+                    const denyBtn = Swal.getDenyButton();
+
+                    denyBtn.addEventListener("click", (e) => {
+                        e.preventDefault();
+
+                        if (!record.appointment) {
+                            Swal.showValidationMessage("No hay cita guardada");
+                            return;
+                        }
+                        downloadAndShareAppointment(record);
+                    });
+                },
                 preConfirm: () => {
                     const date = document.getElementById('appointmentDate').value;
                     const hour = document.getElementById('appointmentHour').value;
@@ -166,7 +179,7 @@ function renderRecords() {
                         return false;
                     }
                     return { date, hour, description };
-                }
+                },
             });
 
             if (scheduleResult.isConfirmed) {
@@ -205,8 +218,6 @@ function renderRecords() {
                     icon: "success"
                 });
 
-            } else if(scheduleResult.isDenied){
-                downloadAndShareAppointment(record)
             }
         });
         
@@ -322,15 +333,6 @@ async function exportRecords() {
 
 function downloadAppointment(record) {
 
-    if (!record.appointment || !record.appointment.appointment_id) {
-        Swal.fire({
-            theme: "dark",
-            title: "<strong>ERROR</strong>",
-            text: "No hay ninguna cita almacenada para descargar",
-            icon: "error"
-        });
-        return;
-    }
     const dateStr = record.appointment.date.replace(/-/g, "");
     const hourStr = record.appointment.hour.replace(":", "") + "00";
 
@@ -391,7 +393,7 @@ END:VCALENDAR`;
 
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `cita_${record.name}.ics`;
+    link.download = `cita_${record.name}_con_${c_user}.ics`;
     link.click();
     link.remove();
 
@@ -407,7 +409,7 @@ END:VCALENDAR`;
             Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text: "No se compartió la cita\nSeleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
+                text: "No se compartió la cita. Seleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
                 icon: "error"
             });
         });
@@ -415,7 +417,7 @@ END:VCALENDAR`;
         Swal.fire({
             theme: "dark",
             title: "<strong>ADVERTENCIA</strong>",
-            text: "No es posible compartir la cita\nSeleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
+            text: "No es posible compartir la cita. Seleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
             icon: "warning"
         });
     }
