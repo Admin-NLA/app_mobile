@@ -462,6 +462,7 @@ async function showScheduleAlert(isNewContact, record) {
             text: responseData.message || "Cita guardada",
             icon: "success"
         }).then(() => showScheduleAlert(isNewContact, record));
+
     } else if(scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
     } else if (scheduleResult.isDenied) {
@@ -469,7 +470,7 @@ async function showScheduleAlert(isNewContact, record) {
         btn.style.display = "none";
         document.body.appendChild(btn);
         btn.addEventListener("click", () => {
-            downloadAndShareAppointment(record);
+            downloadAndShareAppt(isNewContact,record);
             btn.remove();
         });
         btn.click();

@@ -103,6 +103,7 @@ function renderRecords() {
             </div>
             <div class="container-fluid d-flex flex-column flex-md-row text-start">
                 <div class="container d-flex flex-column justify-content-center mb-3 order-2 order-md-1" id="scheduleContainer${record.e_scan_id}">
+                    <button class="btn btn-sm btn-dark" id="downloadAndShareBtn${record.e_scan_id}">Descargar y Compartir Cita</button>
                 </div>
                 <div class="container d-flex flex-column justify-content-center mb-3 order-1 order-md-2">
                     <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}', ${changed}).value)">Guardar</button>
@@ -116,6 +117,7 @@ function renderRecords() {
 
         const notesTA =  document.getElementById(`notesText${record.e_scan_id}`);
         const saveBtn =  document.getElementById(`saveBtn${record.e_scan_id}`);
+        const dAndSBtn = document.getElementById(`downloadAndShareBtn${record.e_scan_id}`);
 
         notesTA.addEventListener("input", () => {
             if (notesTA.value.trim() !== (record.notes || "")) {
@@ -127,12 +129,13 @@ function renderRecords() {
             }
         });
 
+        dAndSBtn.addEventListener("click", () => downloadAndShareAppointment(record));
+
         btn.addEventListener("click", () => {
             const isHidden = detailsRow.classList.contains("d-none");
             detailsRow.classList.toggle("d-none", !isHidden);
             btn.textContent = isHidden ? "−" : "+";
         });
-
         
         scheduleBtn.addEventListener("click", async () => {
             const scheduleResult = await Swal.fire({
@@ -353,7 +356,7 @@ END:VEVENT
 END:VCALENDAR`;
 
     const blob = new Blob([icsContent], { type: "text/calendar" });
-    const file = new File([blob], `cita_${record.name}_con_${c_user}.ics`, { type: "application/octet-stream" });
+    const file = new File([icsContent], `cita_${record.name}_con_${c_user}.ics`, { type: "text/calendar" });
 
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -373,7 +376,7 @@ END:VCALENDAR`;
             Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text: `No se compartió la cita`,
+                text: `No se compartió la cita: ${err}`,
                 icon: "error"
             });
         });
