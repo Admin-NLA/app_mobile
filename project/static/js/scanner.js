@@ -466,7 +466,7 @@ async function showScheduleAlert(isNewContact, record) {
     } else if(scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
     } else if (scheduleResult.isDenied) {
-        downloadAndShareAppt(record);
+        downloadAndShareAppt(isNewContact, record);
     }
     
 }
@@ -509,9 +509,9 @@ END:VCALENDAR`;
 
     await Swal.fire({
         theme: "dark",
-        title: "<strong>ADVERTENCIA</strong>",
+        title: "<strong>ÉXITO</strong>",
         text: `Cita descargada. Para guardar en calendario, haga click en el archivo y seleccione el Calendario Disponible de su preferencia`,
-        icon: "warning"
+        icon: "success"
     });
 
     showScheduleAlert(isNewContact, record);
