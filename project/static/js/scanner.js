@@ -411,9 +411,8 @@ async function showScheduleAlert(isNewContact, record) {
         preDeny: () => {
             if (!record.appointment) {
                 Swal.showValidationMessage("No hay cita guardada");
-                return;
+                return false;
             }
-            downloadAndShareAppointment(record);
         },
         preConfirm: () => {
             const date = document.getElementById('appointmentDate').value;
@@ -465,6 +464,8 @@ async function showScheduleAlert(isNewContact, record) {
         }).then(() => showScheduleAlert(isNewContact, record));
     } else if(scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
+    } else if (scheduleResult.isDenied) {
+        downloadAndShareAppt(record);
     }
     
 }
@@ -504,6 +505,13 @@ END:VCALENDAR`;
     link.click();
     link.remove();
     URL.revokeObjectURL(link.href);
+
+    await Swal.fire({
+        theme: "dark",
+        title: "<strong>ADVERTENCIA</strong>",
+        text: `Cita descargada. Para guardar en calendario, haga click en el archivo y seleccione el Calendario Disponible de su preferencia`,
+        icon: "warning"
+    });
 
     showScheduleAlert(isNewContact, record);
 }
