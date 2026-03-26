@@ -413,7 +413,7 @@ async function showScheduleAlert(isNewContact, record) {
                 Swal.showValidationMessage("No hay cita guardada");
                 return;
             }
-            return downloadAndShareAppt(isNewContact, record);
+            downloadAndShareAppointment(record);
         },
         preConfirm: () => {
             const date = document.getElementById('appointmentDate').value;
@@ -482,7 +482,6 @@ async function downloadAndShareAppt(isNewContact, record) {
     const dateStr = record.appointment.date.replace(/-/g, "");
     const hourStr = record.appointment.hour.replace(":", "") + "00";
     const name = `${record.scanned_a_name} ${record.scanned_a_last_name}`;
-    const fileName = `cita_${name}_con_${c_user}.ics`;
 
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -498,70 +497,18 @@ LOCATION:${escapeICSText(record.appointment.location)}
 END:VEVENT
 END:VCALENDAR`;
 
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
-    const file = new File([blob], fileName, { type: "text/calendar" });
-
-    let shared = false;
-    let shareIssue = "";
-    const hasShareApi = typeof navigator.share === "function";
-    const hasCanShareApi = typeof navigator.canShare === "function";
-    const canShareFiles = hasCanShareApi ? navigator.canShare({ files: [file] }) : true;
-    const isTopLevelContext = window.top === window.self;
-    const webShareAllowedByPolicy =
-        !document.permissionsPolicy ||
-        typeof document.permissionsPolicy.allowsFeature !== "function" ||
-        document.permissionsPolicy.allowsFeature("web-share");
-    const userAgent = navigator.userAgent || "";
-    const isInAppBrowser =
-        /FBAN|FBAV|Instagram|Line|LinkedInApp|MicroMessenger|wv/i.test(userAgent);
-
-    if (!isTopLevelContext) {
-        shareIssue = "La app está en iframe (Web Share bloqueado)";
-    } else if (!webShareAllowedByPolicy) {
-        shareIssue = "Permissions-Policy bloquea web-share";
-    } else if (isInAppBrowser) {
-        shareIssue = "Navegador embebido de app (web-share restringido)";
-    } else if (hasShareApi && canShareFiles) {
-        try {
-            // Must run directly from user gesture to avoid NotAllowedError.
-            await navigator.share({
-                title: "Cita",
-                text: `Cita con ${name}`,
-                files: [file]
-            });
-            shared = true;
-        } catch (err) {
-            const errName = err && err.name ? err.name : "Error";
-            const errMsg = err && err.message ? err.message : "";
-            const wasCancelled = errName === "AbortError" || errName === "NotAllowedError";
-            if (!wasCancelled) {
-                console.error("Error al compartir archivo ICS:", err);
-            }
-            shareIssue = `${errName}${errMsg ? `: ${errMsg}` : ""}`;
-        }
-    } else {
-        if (!hasShareApi) {
-            shareIssue = "Web Share API no disponible";
-        } else if (!canShareFiles) {
-            shareIssue = "El navegador no permite compartir archivos .ics en este contexto";
-        }
-    }
-
-    if (!shared) {
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = fileName;
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(link.href);
-    }
+    const blob = new Blob([icsContent], { type: "text/calendar" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `cita_${name}_con_${c_user}.ics`;
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
 
     await Swal.fire({
         theme: "dark",
         title: "<strong>ADVERTENCIA</strong>",
-        text: shared
-            ? "Cita compartida correctamente."
-            : `No fue posible compartir la cita (${shareIssue || "motivo no especificado"}). Se descargó el archivo .ics para que lo abras en tu calendario.`,
+        text: `Cita descargada. Para guardar en calendario, haga click en el archivo y seleccione el Calendario Disponible de su preferencia`,
         icon: "warning"
     });
 

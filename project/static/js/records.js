@@ -103,7 +103,6 @@ function renderRecords() {
             </div>
             <div class="container-fluid d-flex flex-column flex-md-row text-start">
                 <div class="container d-flex flex-column justify-content-center mb-3 order-2 order-md-1" id="scheduleContainer${record.e_scan_id}">
-                    <button class="btn btn-sm btn-dark" id="downloadAndShareBtn${record.e_scan_id}">Descargar y Compartir Cita</button>
                 </div>
                 <div class="container d-flex flex-column justify-content-center mb-3 order-1 order-md-2">
                     <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}', ${changed}).value)">Guardar</button>
@@ -117,7 +116,6 @@ function renderRecords() {
 
         const notesTA =  document.getElementById(`notesText${record.e_scan_id}`);
         const saveBtn =  document.getElementById(`saveBtn${record.e_scan_id}`);
-        const dAndSBtn = document.getElementById(`downloadAndShareBtn${record.e_scan_id}`);
 
         notesTA.addEventListener("input", () => {
             if (notesTA.value.trim() !== (record.notes || "")) {
@@ -128,8 +126,6 @@ function renderRecords() {
                 changed = false;
             }
         });
-
-        dAndSBtn.addEventListener("click", () => downloadAndShareAppointment(record));
 
         btn.addEventListener("click", () => {
             const isHidden = detailsRow.classList.contains("d-none");
@@ -157,7 +153,7 @@ function renderRecords() {
                 showCancelButton: true,
                 showDenyButton: true,
                 confirmButtonText: record.appointment ? "Actualizar Cita" : "Guardar Cita",
-                denyButtonText: "Descargar y Compartir",
+                denyButtonText: "Descargar Cita",
                 confirmButtonColor: "#4caf50",
                 cancelButtonText: "Cancelar",
                 preDeny: () => {
@@ -215,15 +211,6 @@ function renderRecords() {
                     icon: "success"
                 });
 
-            } else if (scheduleResult.isDenied) {
-                const btn = document.createElement("button");
-                btn.style.display = "none";
-                document.body.appendChild(btn);
-                btn.addEventListener("click", () => {
-                    downloadAndShareAppointment(record);
-                    btn.remove();
-                });
-                btn.click();
             }
         });
         
@@ -357,38 +344,20 @@ END:VEVENT
 END:VCALENDAR`;
 
     const fileName = `cita_${record.name}_con_${c_user}.ics`;
-    const file = new File([icsContent], fileName, { type: "text/calendar" });
-
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-            title: "Cita",
-            text: `Cita ${c_user} con ${record.name}\nFecha: ${record.appointment.date}\nHora: ${record.appointment.hour}\nLugar:${record.appointment.location}`,
-            files: [file]
-        }).catch(err => {
-            console.error("Error al compartir:", err);
-            Swal.fire({
-                theme: "dark",
-                title: "<strong>ERROR</strong>",
-                text: `No se compartió la cita: ${err}`,
-                icon: "error"
-            });
-        });
-    } else {
-        Swal.fire({
-            theme: "dark",
-            title: "<strong>ADVERTENCIA</strong>",
-            text: "No es posible compartir la cita. Seleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
-            icon: "warning"
-        });
-    }
     const blob = new Blob([icsContent], { type: "text/calendar" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = fileName;
     link.click();
     link.remove();
-
     URL.revokeObjectURL(link.href);
+
+    await Swal.fire({
+        theme: "dark",
+        title: "<strong>ADVERTENCIA</strong>",
+        text: `Cita descargada. Para guardar en calendario, haga click en el archivo y seleccione el Calendario Disponible de su preferencia`,
+        icon: "warning"
+    });
      
 }
 
