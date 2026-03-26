@@ -405,7 +405,7 @@ async function showScheduleAlert(isNewContact, record) {
         showCancelButton: true,
         showDenyButton: true,
         confirmButtonText: record.appointment ? "Actualizar Cita" : "Guardar Cita",
-        denyButtonText: "Descargar y Compartir",
+        denyButtonText: "Descargar Cita",
         confirmButtonColor: "#4caf50",
         cancelButtonText: "Cancelar",
         preDeny: () => {
@@ -413,6 +413,7 @@ async function showScheduleAlert(isNewContact, record) {
                 Swal.showValidationMessage("No hay cita guardada");
                 return;
             }
+            return downloadAndShareAppt(isNewContact, record);
         },
         preConfirm: () => {
             const date = document.getElementById('appointmentDate').value;
@@ -462,18 +463,8 @@ async function showScheduleAlert(isNewContact, record) {
             text: responseData.message || "Cita guardada",
             icon: "success"
         }).then(() => showScheduleAlert(isNewContact, record));
-
     } else if(scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
-    } else if (scheduleResult.isDenied) {
-        const btn = document.createElement("button");
-        btn.style.display = "none";
-        document.body.appendChild(btn);
-        btn.addEventListener("click", () => {
-            downloadAndShareAppt(isNewContact,record);
-            btn.remove();
-        });
-        btn.click();
     }
     
 }
@@ -490,6 +481,8 @@ function escapeICSText(text) {
 async function downloadAndShareAppt(isNewContact, record) {
     const dateStr = record.appointment.date.replace(/-/g, "");
     const hourStr = record.appointment.hour.replace(":", "") + "00";
+    const name = `${record.scanned_a_name} ${record.scanned_a_last_name}`;
+    const fileName = `cita_${name}_con_${c_user}.ics`;
 
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -499,49 +492,51 @@ UID:${record.appointment.appointment_id}-cmc-app
 DTSTAMP:${dateStr}T${hourStr}
 DTSTART:${dateStr}T${hourStr}
 DTEND:${dateStr}T${hourStr}
-SUMMARY:Cita con ${record.name}
+SUMMARY:Cita con ${name}
 DESCRIPTION:${escapeICSText(record.appointment.description)}
 LOCATION:${escapeICSText(record.appointment.location)}
 END:VEVENT
 END:VCALENDAR`;
 
-    const blob = new Blob([icsContent], { type: "text/calendar" });
-    const file = new File([blob], `cita_${record.name}_con_${c_user}.ics`, { type: "application/octet-stream" });
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const file = new File([blob], fileName, { type: "text/calendar" });
 
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `cita_${record.name}_con_${c_user}.ics`;
-    link.click();
-    link.remove();
-
-    URL.revokeObjectURL(link.href);
-
-    alert(JSON.stringify({
-        canShare: navigator.canShare ? navigator.canShare({ files: [file] }) : null,
-        secure: window.isSecureContext
-    }));
+    let shared = false;
 
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-            title: "Cita",
-            text: `Cita ${c_user} con ${record.name}\nFecha: ${record.appointment.date}\nHora: ${record.appointment.hour}\nLugar:${record.appointment.location}`,
-            files: [file]
-        }).catch(async err => {
-            console.error("Error al compartir:", err);
-            await Swal.fire({
-                theme: "dark",
-                title: "<strong>ERROR</strong>",
-                text: `No se compartió la cita`,
-                icon: "error"
+        try {
+            // Must run directly from user gesture to avoid NotAllowedError.
+            await navigator.share({
+                title: "Cita",
+                text: `Cita con ${name}`,
+                files: [file]
             });
-        });
-    } else {
-        await Swal.fire({
-            theme: "dark",
-            title: "<strong>ADVERTENCIA</strong>",
-            text: "No es posible compartir la cita. Seleccione manualmente el archivo descargado para compartir en el canal de su preferencia",
-            icon: "warning"
-        });
+            shared = true;
+        } catch (err) {
+            const wasCancelled = err && (err.name === "AbortError" || err.name === "NotAllowedError");
+            if (!wasCancelled) {
+                console.error("Error al compartir archivo ICS:", err);
+            }
+        }
     }
+
+    if (!shared) {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+    }
+
+    await Swal.fire({
+        theme: "dark",
+        title: "<strong>ADVERTENCIA</strong>",
+        text: shared
+            ? "Cita compartida correctamente."
+            : "No fue posible compartir la cita. Se descargó el archivo .ics para que lo abras en tu calendario.",
+        icon: "warning"
+    });
+
     showScheduleAlert(isNewContact, record);
 }
