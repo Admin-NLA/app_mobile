@@ -413,6 +413,7 @@ async function showScheduleAlert(isNewContact, record) {
                 Swal.showValidationMessage("No hay cita guardada");
                 return false;
             }
+            return true;
         },
         preConfirm: () => {
             const date = document.getElementById('appointmentDate').value;

@@ -161,7 +161,7 @@ function renderRecords() {
                         Swal.showValidationMessage("No hay cita guardada");
                         return false;
                     }
-                    downloadAndShareAppointment(record);
+                    return true;
                 },
                 preConfirm: () => {
                     const date = document.getElementById('appointmentDate').value;
@@ -211,6 +211,8 @@ function renderRecords() {
                     icon: "success"
                 });
 
+            } else if(scheduleResult.isDenied) {
+                downloadAndShareAppointment(record);
             }
         });
         
