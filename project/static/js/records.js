@@ -163,8 +163,9 @@ function renderRecords() {
                 preDeny: () => {
                     if (!record.appointment) {
                         Swal.showValidationMessage("No hay cita guardada");
-                        return;
+                        return false;
                     }
+                    downloadAndShareAppointment(record);
                 },
                 preConfirm: () => {
                     const date = document.getElementById('appointmentDate').value;
@@ -336,7 +337,7 @@ async function exportRecords() {
         });
 }
 
-function downloadAndShareAppointment(record) {
+async function downloadAndShareAppointment(record) {
 
     const dateStr = record.appointment.date.replace(/-/g, "");
     const hourStr = record.appointment.hour.replace(":", "") + "00";
@@ -355,19 +356,11 @@ LOCATION:${escapeICSText(record.appointment.location)}
 END:VEVENT
 END:VCALENDAR`;
 
-    const blob = new Blob([icsContent], { type: "text/calendar" });
-    const file = new File([icsContent], `cita_${record.name}_con_${c_user}.ics`, { type: "text/calendar" });
-
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `cita_${record.name}_con_${c_user}.ics`;
-    link.click();
-    link.remove();
-
-    URL.revokeObjectURL(link.href);
+    const fileName = `cita_${record.name}_con_${c_user}.ics`;
+    const file = new File([icsContent], fileName, { type: "text/calendar" });
 
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({
+        await navigator.share({
             title: "Cita",
             text: `Cita ${c_user} con ${record.name}\nFecha: ${record.appointment.date}\nHora: ${record.appointment.hour}\nLugar:${record.appointment.location}`,
             files: [file]
@@ -388,6 +381,15 @@ END:VCALENDAR`;
             icon: "warning"
         });
     }
+    const blob = new Blob([icsContent], { type: "text/calendar" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(link.href);
+     
 }
 
 function escapeICSText(text) {
