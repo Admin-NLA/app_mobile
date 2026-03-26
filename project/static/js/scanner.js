@@ -65,6 +65,7 @@ function escapeHtml(str = '') {
 }
 
 async function onQrScanned(decodedText, decodedResult) {
+    zoomSlider.disabled = true;
     await track.stop();
     await scanner.stop();
 
@@ -158,6 +159,9 @@ async function onQrScanned(decodedText, decodedResult) {
                 } else {
                     showContactAlert(true, data.record);
                 }
+            } else {
+                zoomSlider.disabled = false;
+                scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
             }
         } catch (err) {
             await Swal.fire({
@@ -166,6 +170,7 @@ async function onQrScanned(decodedText, decodedResult) {
                 text: "Ocurrió un error",
                 icon: "error",
             });
+            zoomSlider.disabled = false;
             scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
         }
     }
@@ -182,7 +187,7 @@ async function checkScanStatus(scanId) {
     clearInterval(pollingInterval);
 
     if(!data.result){
-        Swal.fire({
+        await Swal.fire({
             theme: "dark",
             title: "<strong>ERROR</strong>",
             text: data.message,
@@ -190,14 +195,14 @@ async function checkScanStatus(scanId) {
         });
     } else {
         if(data.status === "repeated"){
-            Swal.fire({
+            await Swal.fire({
                 theme: "dark",
                 title: "<strong>REPETIDO</strong>",
                 text: data.message,
                 icon: "warning",
             });
         } else {
-            Swal.fire({
+            await Swal.fire({
                 theme: "dark",
                 title: "<strong>ÉXITO</strong>",
                 text: data.message,
@@ -205,7 +210,7 @@ async function checkScanStatus(scanId) {
             });
         }
     }
-    
+    zoomSlider.disabled = false;
     scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
 }
 
@@ -243,13 +248,15 @@ document.getElementById("start-scan").onclick = async () => {
                     }));
 
                 zoomSlider.addEventListener("input", () => {
-                    track.applyConstraints({advanced: [{zoom: parseFloat(zoomSlider.value)}]})
-                        .catch(err => Swal.fire({
-                            theme: "dark",
-                            title: "<strong>ERROR</strong>",
-                            text: "Error de zoom: " + err,
-                            icon: "error",
-                        }));
+                    if(track && track.readyState === "live") {
+                        track.applyConstraints({advanced: [{zoom: parseFloat(zoomSlider.value)}]})
+                            .catch(err => Swal.fire({
+                                theme: "dark",
+                                title: "<strong>ERROR</strong>",
+                                text: "Error de zoom: " + err,
+                                icon: "error",
+                            }));
+                        }
                 });
             } else {
                 document.getElementById("zoomControl").style.display = "none";
@@ -330,6 +337,7 @@ async function showContactAlert(isNewContact, record) {
         } else if (result.isDenied) {
             showScheduleAlert(isNewContact, record)
         } else if (result.isDismissed) {
+            zoomSlider.disabled = false;
             scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
         }
     });

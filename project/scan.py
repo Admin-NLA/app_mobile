@@ -169,7 +169,7 @@ def add_or_update_appointment():
     appointment = Appointment.query.filter_by(appointment_id=appointment_id).first()
     if appointment:
         if str(appointment.date) == date and str(appointment.hour) == hour and str(appointment.description) == description:
-            return jsonify({'message': 'No se realizaron cambios en la cita agendada'})
+            return jsonify({'message': 'No se realizaron cambios en la cita agendada', 'appointment': appointment.to_dict()})
         appointment.date = date
         appointment.hour = hour
         appointment.description = description
