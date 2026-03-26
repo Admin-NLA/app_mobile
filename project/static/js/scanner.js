@@ -506,8 +506,22 @@ END:VCALENDAR`;
     const hasShareApi = typeof navigator.share === "function";
     const hasCanShareApi = typeof navigator.canShare === "function";
     const canShareFiles = hasCanShareApi ? navigator.canShare({ files: [file] }) : true;
+    const isTopLevelContext = window.top === window.self;
+    const webShareAllowedByPolicy =
+        !document.permissionsPolicy ||
+        typeof document.permissionsPolicy.allowsFeature !== "function" ||
+        document.permissionsPolicy.allowsFeature("web-share");
+    const userAgent = navigator.userAgent || "";
+    const isInAppBrowser =
+        /FBAN|FBAV|Instagram|Line|LinkedInApp|MicroMessenger|wv/i.test(userAgent);
 
-    if (hasShareApi && canShareFiles) {
+    if (!isTopLevelContext) {
+        shareIssue = "La app está en iframe (Web Share bloqueado)";
+    } else if (!webShareAllowedByPolicy) {
+        shareIssue = "Permissions-Policy bloquea web-share";
+    } else if (isInAppBrowser) {
+        shareIssue = "Navegador embebido de app (web-share restringido)";
+    } else if (hasShareApi && canShareFiles) {
         try {
             // Must run directly from user gesture to avoid NotAllowedError.
             await navigator.share({
