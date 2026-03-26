@@ -505,12 +505,5 @@ END:VCALENDAR`;
     link.remove();
     URL.revokeObjectURL(link.href);
 
-    await Swal.fire({
-        theme: "dark",
-        title: "<strong>ADVERTENCIA</strong>",
-        text: `Cita descargada. Para guardar en calendario, haga click en el archivo y seleccione el Calendario Disponible de su preferencia`,
-        icon: "warning"
-    });
-
     showScheduleAlert(isNewContact, record);
 }
