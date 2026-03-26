@@ -502,8 +502,12 @@ END:VCALENDAR`;
     const file = new File([blob], fileName, { type: "text/calendar" });
 
     let shared = false;
+    let shareIssue = "";
+    const hasShareApi = typeof navigator.share === "function";
+    const hasCanShareApi = typeof navigator.canShare === "function";
+    const canShareFiles = hasCanShareApi ? navigator.canShare({ files: [file] }) : true;
 
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (hasShareApi && canShareFiles) {
         try {
             // Must run directly from user gesture to avoid NotAllowedError.
             await navigator.share({
@@ -513,10 +517,19 @@ END:VCALENDAR`;
             });
             shared = true;
         } catch (err) {
-            const wasCancelled = err && (err.name === "AbortError" || err.name === "NotAllowedError");
+            const errName = err && err.name ? err.name : "Error";
+            const errMsg = err && err.message ? err.message : "";
+            const wasCancelled = errName === "AbortError" || errName === "NotAllowedError";
             if (!wasCancelled) {
                 console.error("Error al compartir archivo ICS:", err);
             }
+            shareIssue = `${errName}${errMsg ? `: ${errMsg}` : ""}`;
+        }
+    } else {
+        if (!hasShareApi) {
+            shareIssue = "Web Share API no disponible";
+        } else if (!canShareFiles) {
+            shareIssue = "El navegador no permite compartir archivos .ics en este contexto";
         }
     }
 
@@ -534,7 +547,7 @@ END:VCALENDAR`;
         title: "<strong>ADVERTENCIA</strong>",
         text: shared
             ? "Cita compartida correctamente."
-            : "No fue posible compartir la cita. Se descargó el archivo .ics para que lo abras en tu calendario.",
+            : `No fue posible compartir la cita (${shareIssue || "motivo no especificado"}). Se descargó el archivo .ics para que lo abras en tu calendario.`,
         icon: "warning"
     });
 
