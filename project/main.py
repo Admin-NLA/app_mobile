@@ -126,6 +126,7 @@ def export_exhibitor_records():
 
     scan_records = (
         ExhibitorScan.query
+        .options(joinedload(ExhibitorScan.appointment))
         .join(ExhibitorScan.user)
         .filter(
             User.company == current_user.company,
@@ -144,6 +145,7 @@ def export_exhibitor_records():
             "EMAIL": scan.scanned_a_email,
             "EMPRESA": scan.scanned_a_company,
             "NOTAS": scan.notes,
+            "CITA": "✓" if scan.appointment else ""
         }
         for scan in scan_records
     ]

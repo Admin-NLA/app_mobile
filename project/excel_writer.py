@@ -6,7 +6,9 @@ def create_records_excel_file(data:list, edition:str):
     df = pd.DataFrame(data)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, header=False, index=False, sheet_name='Contactos', startrow=3)
+        startrow = 3
+
+        df.to_excel(writer, header=False, index=False, sheet_name='Contactos', startrow=startrow+1)
         workbook = writer.book
         worksheet:Worksheet = writer.sheets['Contactos']
         max_row, max_col = df.shape
@@ -35,7 +37,7 @@ def create_records_excel_file(data:list, edition:str):
         for header in df.columns:
             column_settings.append({'header': header})
 
-        worksheet.add_table(3,0,max_row+2, max_col-1, {'columns': column_settings, 'style': 'Table Style Dark 9'})
+        worksheet.add_table(startrow,0,startrow + max_row, max_col-1, {'columns': column_settings, 'style': 'Table Style Dark 9'})
         wrap_format = workbook.add_format({'text_wrap':True, 'valign': 'vcenter'})
 
         for i, col in enumerate(df.columns):
@@ -47,3 +49,4 @@ def create_records_excel_file(data:list, edition:str):
 
     output.seek(0)
     return output
+

@@ -3,6 +3,7 @@ const activeEventLabel = document.getElementById("activeEventLabel");
 let records;
 let eventName;
 let c_user;
+const changedMap = {}
 
 function toggleExportButton(activeEvent){
     const div =  document.getElementById("topDiv");
@@ -87,7 +88,6 @@ function renderRecords() {
         detailsRow.classList.add("d-none");
         const detailsCell = detailsRow.insertCell();
         detailsCell.colSpan = detailsColSpan;
-        let changed = false;
         detailsCell.innerHTML = `
             <div class="container-fluid d-flex flex-column flex-md-row text-start">
                 <div class="container d-flex flex-column justify-content-center mb-3 fs-5">
@@ -105,7 +105,7 @@ function renderRecords() {
                 <div class="container d-flex flex-column justify-content-center mb-3 order-2 order-md-1" id="scheduleContainer${record.e_scan_id}">
                 </div>
                 <div class="container d-flex flex-column justify-content-center mb-3 order-1 order-md-2">
-                    <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}').value, ${changed})">Guardar</button>
+                    <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}').value)">Guardar</button>
                 </div>
             </div>
         `;
@@ -120,10 +120,10 @@ function renderRecords() {
         notesTA.addEventListener("input", () => {
             if (notesTA.value.trim() !== (record.notes || "")) {
                 saveBtn.disabled = false;
-                changed = true;
+                changedMap[record.e_scan_id] = true;
             } else {
                 saveBtn.disabled = true;
-                changed = false;
+                changedMap[record.e_scan_id] = false;
             }
         });
 
@@ -219,8 +219,8 @@ function renderRecords() {
     });
 }
 
-async function updateNotes(e_scan_id, notes, changed) {
-    if (!changed) {
+async function updateNotes(e_scan_id, notes) {
+    if (!changedMap[e_scan_id]) {
         await Swal.fire({
             theme: "dark",
             title: "<strong>CUIDADO</strong>",

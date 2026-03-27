@@ -163,7 +163,8 @@ async function onQrScanned(decodedText, decodedResult) {
             } else {
                 isScanning = true;
                 zoomSlider.disabled = false;
-                scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+                await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+                await restartScanner();
             }
         } catch (err) {
             await Swal.fire({
@@ -174,7 +175,8 @@ async function onQrScanned(decodedText, decodedResult) {
             });
             isScanning = true;
             zoomSlider.disabled = false;
-            scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+            await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+            await restartScanner();
         }
     }
 }
@@ -215,7 +217,8 @@ async function checkScanStatus(scanId) {
     }
     isScanning = true;
     zoomSlider.disabled = false;
-    scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
+    await scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
+    await restartScanner();
 }
 
 document.getElementById("start-scan").onclick = async () => {
@@ -296,6 +299,42 @@ document.getElementById("stop-scan").onclick = async () => {
     message.textContent = "Escáner detenido";
 };
 
+async function restartScanner() {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    track = stream.getVideoTracks()[0];
+
+    const capabilities = track.getCapabilities();
+    if (capabilities.zoom) {
+        zoomSlider.disabled = false;
+        zoomSlider.min = capabilities.zoom.min;
+        zoomSlider.max = capabilities.zoom.max;
+        zoomSlider.step = capabilities.zoom.step || 0.2;
+
+        track.applyConstraints({advanced: [{zoom: parseFloat(zoomSlider.value)}]})
+            .catch(err => Swal.fire({
+                theme: "dark",
+                title: "<strong>ERROR</strong>",
+                text: "Error de zoom: " + err,
+                icon: "error",
+            }));
+
+        zoomSlider.oninput = () => {
+            if (track && track.readyState === "live") {
+                track.applyConstraints({ advanced: [{ zoom: parseFloat(zoomSlider.value) }] })
+                    .catch(err => Swal.fire({
+                        theme: "dark",
+                        title: "<strong>ERROR</strong>",
+                        text: "Error de zoom: " + err,
+                        icon: "error",
+                    }));
+            }
+        };
+    } else {
+        zoomSlider.style.display = "none";
+    }
+}
+
+
 document.addEventListener('visibilitychange', async () => {
     if(document.visibilityState !== 'visible') {
         if(isScanning) {
@@ -309,7 +348,7 @@ document.addEventListener('visibilitychange', async () => {
         if(isScanning) {
             await scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
             if(track) {
-                await track.start();
+                await restartScanner();
             }
         }
         
@@ -344,6 +383,7 @@ async function showContactAlert(isNewContact, record) {
             isScanning = true;
             zoomSlider.disabled = false;
             scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+            restartScanner();
         }
     });
 
