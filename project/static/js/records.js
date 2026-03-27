@@ -105,7 +105,7 @@ function renderRecords() {
                 <div class="container d-flex flex-column justify-content-center mb-3 order-2 order-md-1" id="scheduleContainer${record.e_scan_id}">
                 </div>
                 <div class="container d-flex flex-column justify-content-center mb-3 order-1 order-md-2">
-                    <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}', ${changed}).value)">Guardar</button>
+                    <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}').value, ${changed})">Guardar</button>
                 </div>
             </div>
         `;
@@ -284,6 +284,17 @@ function loadRecords() {
 }
 
 async function exportRecords() {
+
+    if (!records || records.length === 0) {
+        await Swal.fire({
+            theme: "dark",
+            title: "<strong>AVISO</strong>",
+            text: "No hay registros para exportar",
+            icon: "info"
+        });
+        return;
+    }
+
     fetch("/export-records")
         .then(async response => {
             if (!response.ok) {
@@ -339,7 +350,7 @@ UID:${record.appointment.appointment_id}-cmc-app
 DTSTAMP:${dateStr}T${hourStr}
 DTSTART:${dateStr}T${hourStr}
 DTEND:${dateStr}T${hourStr}
-SUMMARY:Cita con ${record.name}
+SUMMARY:Cita ${c_user} con ${record.name}
 DESCRIPTION:${escapeICSText(record.appointment.description)}
 LOCATION:${escapeICSText(record.appointment.location)}
 END:VEVENT

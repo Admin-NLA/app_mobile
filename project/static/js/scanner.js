@@ -65,6 +65,7 @@ function escapeHtml(str = '') {
 }
 
 async function onQrScanned(decodedText, decodedResult) {
+    isScanning = false;
     zoomSlider.disabled = true;
     await track.stop();
     await scanner.stop();
@@ -160,6 +161,7 @@ async function onQrScanned(decodedText, decodedResult) {
                     showContactAlert(true, data.record);
                 }
             } else {
+                isScanning = true;
                 zoomSlider.disabled = false;
                 scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
             }
@@ -170,6 +172,7 @@ async function onQrScanned(decodedText, decodedResult) {
                 text: "Ocurrió un error",
                 icon: "error",
             });
+            isScanning = true;
             zoomSlider.disabled = false;
             scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
         }
@@ -210,6 +213,7 @@ async function checkScanStatus(scanId) {
             });
         }
     }
+    isScanning = true;
     zoomSlider.disabled = false;
     scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
 }
@@ -337,6 +341,7 @@ async function showContactAlert(isNewContact, record) {
         } else if (result.isDenied) {
             showScheduleAlert(isNewContact, record)
         } else if (result.isDismissed) {
+            isScanning = true;
             zoomSlider.disabled = false;
             scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
         }
@@ -491,7 +496,7 @@ function escapeICSText(text) {
 async function downloadAndShareAppt(isNewContact, record) {
     const dateStr = record.appointment.date.replace(/-/g, "");
     const hourStr = record.appointment.hour.replace(":", "") + "00";
-    const name = `${record.scanned_a_name} ${record.scanned_a_last_name}`;
+    const name = `${record.scanned_a_last_name} ${record.scanned_a_name}`;
 
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -501,7 +506,7 @@ UID:${record.appointment.appointment_id}-cmc-app
 DTSTAMP:${dateStr}T${hourStr}
 DTSTART:${dateStr}T${hourStr}
 DTEND:${dateStr}T${hourStr}
-SUMMARY:Cita con ${name}
+SUMMARY:Cita ${c_user} con ${name}
 DESCRIPTION:${escapeICSText(record.appointment.description)}
 LOCATION:${escapeICSText(record.appointment.location)}
 END:VEVENT
