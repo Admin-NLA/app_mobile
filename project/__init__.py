@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_cors import CORS
@@ -38,16 +38,18 @@ def create_app():
     from .scan import scan as scan_bp
     app.register_blueprint(scan_bp)
 
-    # Evento activo disponible en toda la app (caché por día, una consulta por fecha)
-    from flask import g
-    from .events import set_active_event_for_request
+    from .events import set_active_event_for_request, get_active_event_stats_preview
 
     @app.before_request
     def inject_active_event():
         set_active_event_for_request()
+        g.active_event_stats_preview = get_active_event_stats_preview()
 
     @app.context_processor
     def inject_active_event_into_templates():
-        return {"active_event": g.get("active_event")}
+        return {
+            "active_event": g.get("active_event"), 
+            "active_event_stats_preview_today": g.get("active_event_stats_preview")
+        }
 
     return app

@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 from .models import User, Stats, ExhibitorScan, Event
 from .auth import require_user_type
-from .events import get_active_event
+from .events import get_active_event, get_active_event_stats_preview
 from .excel_writer import create_records_excel_file
 
 main = Blueprint('main', __name__)
@@ -13,6 +13,12 @@ main = Blueprint('main', __name__)
 @login_required
 def home():
     return render_template('home.html')
+
+@main.route('/stats-preview')
+@login_required
+@require_user_type("ADMIN", "STAFF")
+def stats_preview():
+    return jsonify({"stats": get_active_event_stats_preview()})
 
 @main.route('/scanner')
 @login_required
