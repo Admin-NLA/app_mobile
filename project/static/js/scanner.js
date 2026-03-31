@@ -90,8 +90,12 @@ async function onQrScanned(decodedText, decodedResult) {
                     title: "<strong>ERROR</strong>",
                     text: "Error al enviar escaneo",
                     icon: "error",
-                });
-                return;
+            });
+            isScanning = true;
+            zoomSlider.disabled = false;
+            await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+            await restartScanner();
+            return;
         }
 
         const { scan_id } = await response.json();
@@ -113,6 +117,10 @@ async function onQrScanned(decodedText, decodedResult) {
                     text: "No se pudo procesar el escaneo",
                     icon: "error",
                 });
+                isScanning = true;
+                zoomSlider.disabled = false;
+                await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+                await restartScanner();
                 return;
             }
 
@@ -150,6 +158,10 @@ async function onQrScanned(decodedText, decodedResult) {
                         text: data.message || "No se pudo Guardar el Contacto",
                         icon: "error"
                     });
+                    isScanning = true;
+                    zoomSlider.disabled = false;
+                    await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+                    await restartScanner();
                     return;
                 }
 
