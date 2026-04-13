@@ -212,7 +212,7 @@ function renderRecords() {
                 scheduleBtn.textContent = "Ver Cita";
 
                 [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
-                apptStatusText.innerHTML = statusText;
+                apptStatusText.textContent = statusText;
                 apptStatusText.className = statusTextClass;
                 apptCheck.checked = statusCheckState;
 
@@ -237,7 +237,7 @@ function renderRecords() {
             apptCheck.checked = statusCheckState;
         }
 
-        apptStatusText.innerHTML = statusText;
+        apptStatusText.textContent = statusText;
         apptStatusText.className = statusTextClass;
 
         apptCheck.addEventListener("change", function () {
@@ -448,9 +448,11 @@ async function updateAppointmentStatus(checkbox, record) {
         return;
     }
 
+    record.appointment.status = isChecked;
+
     const apptStatusText = document.getElementById(`appointmentStatus${record.e_scan_id}`);
     const [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
-    apptStatusText.innerText = statusText;
+    apptStatusText.textContent = statusText;
     apptStatusText.className = statusTextClass;
 
     await Swal.fire({
@@ -459,8 +461,6 @@ async function updateAppointmentStatus(checkbox, record) {
         text: responseData.message || "Estado de la cita actualizado",
         icon: "success"
     });
-
-    record.appointment.status = isChecked;
 
 }
 
