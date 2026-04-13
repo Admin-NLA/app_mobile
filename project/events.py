@@ -1,9 +1,3 @@
-# events.py
-"""
-Evento activo de la app: lógica centralizada y caché por fecha
-para no repetir consultas en cada request (útil en Render y entornos serverless).
-"""
-
 from datetime import date, datetime, timedelta
 from flask import g
 from .models import Event, Stats
@@ -14,27 +8,17 @@ _active_event_stats_preview_cache = (None, None, None, None)
 _STATS_PREVIEW_TTL_MINUTES = 20
 
 def get_active_event():
-    """
-    Devuelve el evento activo según la fecha de consulta:
-    - Evento en curso (fecha en [start_date, end_date]), o
-    - Próximo evento (start_date >= fecha), ordenado por start_date.
-    """
     d = date.today()
 
     current = Event.query.filter(
         Event.start_date <= d,
-        Event.end_date >= d,
+        Event.end_date + timedelta(days=30) >= d,
     ).first()
     if current:
         return current
     return Event.query.filter(Event.start_date >= d).order_by(Event.start_date.asc()).first()
 
-
 def set_active_event_for_request():
-    """
-    Poblado desde before_request: deja en g.active_event el evento activo de hoy.
-    Usa caché por día para evitar la consulta pesada en cada request.
-    """
     global _active_event_cache
     today = date.today()
     cached_date, cached_event_id = _active_event_cache

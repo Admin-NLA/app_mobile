@@ -27,6 +27,8 @@
                 <option value="generalStats">Estadísticas Generales</option>
                 <option value="attendeeStats">Asistentes</option>
                 <option value="dailyStats">Estadísticas por Día</option>
+                <option value="exhibitorStats">Expositores</option>
+                <option value="exhibitorScansStats">Citas de Expositor</option>
             </select>
 
             <input type="text" class="form-control" id="searchInput" placeholder="Buscar" disabled>
@@ -125,6 +127,39 @@
                 </thead>
                 <tbody>
                     
+                </tbody>
+            </table>
+
+            <table class="table table-dark table-striped align-middle text-center" id="exhibitorsTable">
+                <thead >
+                    <tr>
+                        <th style="z-index: 4;">ID</th>
+                        <th>Apellido(s)</th>
+                        <th>Nombre(s)</th>
+                        <th>Empresa</th>
+                        <th>Tipo</th>
+                        <th>Día 3</th>
+                        <th>Día 4</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                </tbody>
+                
+            </table>
+
+            <table class="table table-dark table-striped align-middle text-center" id="exhibitorScansTable">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Empresa</th>
+                        <th>Citas</th>
+                        <th>Citas Completadas</th>
+                    </tr>
+                </thead>
+                <tbody>
+            
                 </tbody>
             </table>
 

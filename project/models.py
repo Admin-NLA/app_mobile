@@ -50,8 +50,8 @@ class Stats(db.Model):
     stats_id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('events.event_id'), nullable=False)
     stats = db.Column(JSONB)
-    created_at = db.Column(db.DateTime, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     
     event = db.relationship('Event', back_populates = 'stats_ev')
     
@@ -96,6 +96,9 @@ class Appointment(db.Model):
     hour = db.Column(db.String(20), nullable=False)
     description = db.Column(db.Text)
     location = db.Column(db.String(255))
+    status = db.Column(db.Boolean)
+    created_at = db.Column(db.DateTime, default=datetime.now(), nullable=False, index = True)
+    updated_at = db.Column(db.DateTime, default=datetime.now(), nullable=False)
 
     exhibitor_scan = db.relationship('ExhibitorScan', back_populates = 'appointment')
 
@@ -107,4 +110,5 @@ class Appointment(db.Model):
             'hour': self.hour,
             'description': self.description,
             'location': self.location,
+            'status': self.status
         }

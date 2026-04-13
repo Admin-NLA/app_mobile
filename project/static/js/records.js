@@ -3,7 +3,7 @@ const activeEventLabel = document.getElementById("activeEventLabel");
 let records;
 let eventName;
 let c_user;
-const changedMap = {}
+const notesChangedMap = {}
 
 function toggleExportButton(activeEvent){
     const div =  document.getElementById("topDiv");
@@ -72,10 +72,6 @@ function renderRecords() {
         scheduleBtn.id = `scheduleBtn${record.e_scan_id}`;
         scheduleBtn.className = "btn btn-sm btn-dark";
 
-        if (record.appointment) {
-            scheduleBtn.textContent = "Revisar Cita";
-        }
-
         scheduleBtn.textContent = record.appointment ? "Ver Cita" : "Agendar Cita";
 
         if (window.innerWidth > 768) {
@@ -95,6 +91,11 @@ function renderRecords() {
                     <span><strong>Día:</strong> ${record.day}</span>
                     <span><strong>Teléfono:</strong> ${record.phone || "N/A"}</span>
                     <span><strong>Empresa:</strong> ${record.company || "N/A"}</span>
+                    <span class="d-flex flex-column flex-md-row mt-4"><strong class="me-sm-2 mb-1 mb-sm-0">Estado de la Cita:</strong> <span id="appointmentStatus${record.e_scan_id}"></span></span>
+                    <span>
+                        <input class="form-check-input" type="checkbox" id="appointmentCheck${record.e_scan_id}" disabled>
+                        <label class="form-check-label" for="appointmentCheck${record.e_scan_id}">Marcar Cita como Completada</label>
+                    </span>
                 </div>
                 <div class="container d-flex flex-column justify-content-center mb-3">
                     <span class="mb-3"><strong>Notas:</strong></span> 
@@ -120,10 +121,10 @@ function renderRecords() {
         notesTA.addEventListener("input", () => {
             if (notesTA.value.trim() !== (record.notes || "")) {
                 saveBtn.disabled = false;
-                changedMap[record.e_scan_id] = true;
+                notesChangedMap[record.e_scan_id] = true;
             } else {
                 saveBtn.disabled = true;
-                changedMap[record.e_scan_id] = false;
+                notesChangedMap[record.e_scan_id] = false;
             }
         });
 
@@ -133,6 +134,10 @@ function renderRecords() {
             btn.textContent = isHidden ? "−" : "+";
         });
         
+        const apptStatusText = document.getElementById(`appointmentStatus${record.e_scan_id}`);
+        const apptCheck = document.getElementById(`appointmentCheck${record.e_scan_id}`);
+        let statusCheckState, statusText, statusTextClass;
+
         scheduleBtn.addEventListener("click", async () => {
             const scheduleResult = await Swal.fire({
                 theme: "dark",
@@ -200,9 +205,16 @@ function renderRecords() {
                         text: "No se pudo guardar la cita",
                         icon: "error"
                     });
+                    return;
                 }
 
                 record.appointment = responseData.appointment;
+                scheduleBtn.textContent = "Ver Cita";
+
+                [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
+                apptStatusText.innerHTML = statusText;
+                apptStatusText.className = statusTextClass;
+                apptCheck.checked = statusCheckState;
 
                 await Swal.fire({
                     theme: "dark",
@@ -215,12 +227,27 @@ function renderRecords() {
                 downloadAndShareAppointment(record);
             }
         });
-        
+
+        if (!record.appointment) {
+            statusText = "Cita no Agendada";
+            statusTextClass = "text-muted";
+        } else {
+            apptCheck.disabled = false;
+            [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
+            apptCheck.checked = statusCheckState;
+        }
+
+        apptStatusText.innerHTML = statusText;
+        apptStatusText.className = statusTextClass;
+
+        apptCheck.addEventListener("change", function () {
+            updateAppointmentStatus(this, record);
+        });
     });
 }
 
 async function updateNotes(e_scan_id, notes) {
-    if (!changedMap[e_scan_id]) {
+    if (!notesChangedMap[e_scan_id]) {
         await Swal.fire({
             theme: "dark",
             title: "<strong>CUIDADO</strong>",
@@ -371,6 +398,100 @@ END:VCALENDAR`;
         text: `Cita descargada. Para guardar en calendario, haga click en el archivo y seleccione el Calendario Disponible de su preferencia`,
         icon: "success"
     });
+}
+
+async function updateAppointmentStatus(checkbox, record) {
+    if (!record.appointment) {
+        await Swal.fire({
+            theme: "dark",
+            title: "<strong>CUIDADO</strong>",
+            text: "No hay cita agendada. Acción no permitida",
+            icon: "warning"
+        });
+        return;
+    }
+
+    if(isAppointmentActive(record.appointment)) {
+        await Swal.fire({
+            theme: "dark",
+            title: "<strong>CUIDADO</strong>",
+            text: "La fecha y hora de la cita no se ha cumplido. No se actualizó el estado",
+            icon: "warning"
+        });
+        checkbox.checked = !checkbox.checked;
+        return;
+    }
+
+    const isChecked = checkbox.checked;
+
+    const updatePayload = {
+        appointment_id: record.appointment ? record.appointment.appointment_id : 0,
+        status: isChecked
+    };
+
+    const response = await fetch("/update-appointment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload)
+    });
+
+    const responseData = await response.json().catch(() => ({}));
+
+    if(!response.ok) {
+        await Swal.fire({
+            theme: "dark",
+            title: "<strong>ERROR</strong>",
+            text: "No se pudo actualizar el estado de la cita",
+            icon: "error"
+        });
+        checkbox.checked = !checkbox.checked;
+        return;
+    }
+
+    const apptStatusText = document.getElementById(`appointmentStatus${record.e_scan_id}`);
+    const [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
+    apptStatusText.innerText = statusText;
+    apptStatusText.className = statusTextClass;
+
+    await Swal.fire({
+        theme: "dark",
+        title: "<strong>ÉXITO</strong>",
+        text: responseData.message || "Estado de la cita actualizado",
+        icon: "success"
+    });
+
+    record.appointment.status = isChecked;
+
+}
+
+function isAppointmentActive(appointment) {
+    const today = new Date();
+
+    const [year, month, day] = appointment.date.split("-").map(Number);
+    const apptDate = new Date(year, month-1, day);
+    const [hours, minutes] = appointment.hour.split(":").map(Number);
+    apptDate.setHours(hours,minutes,0,0);
+
+    return today < apptDate;
+}
+
+function changeApptDisplayedStatus(appointment) {
+    var statusCheckState,statusText, statusTextClass;
+    if (appointment.status) {
+        statusCheckState = true;
+        statusText = "Cita Completada";
+        statusTextClass = "text-success";
+    } else {
+        statusCheckState = false;
+        if (isAppointmentActive(appointment)) {
+            statusText = "Cita Pendiente";
+            statusTextClass = "text-warning";
+        } else {
+            statusText = "Cita no Completada";
+            statusTextClass = "text-danger";
+        }
+    }
+    return [statusCheckState, statusText, statusTextClass];
 }
 
 function escapeICSText(text) {

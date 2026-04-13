@@ -212,3 +212,21 @@ END:VCALENDAR"""
         mimetype="text/calendar",
         headers={"Content-Disposition": f"attachment;filename=cita_{appointment_id}.ics"}
     )
+
+@scan.route("/update-appointment-status", methods=["POST"])
+@login_required
+@require_user_type("ADMIN", "EXHIBITOR")
+def update_appointment_status():
+    data = request.get_json()
+    appointment_id = int(data.get('appointment_id', 0))
+    status = data.get('status', None)
+    
+    appointment = Appointment.query.filter_by(appointment_id=appointment_id).first()
+    if appointment:
+        if appointment.status == status:
+            return jsonify({'message': 'No se realizaron cambios en el estado de la cita'})
+        appointment.status = status
+        db.session.commit()
+        return jsonify({'message': 'Estado de la cita actualizado'})
+    
+    return jsonify({'message': 'Cita no encontrada'})

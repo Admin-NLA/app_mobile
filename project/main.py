@@ -1,13 +1,13 @@
 from flask import Blueprint, render_template, redirect, url_for, request, jsonify, g, send_file
 from flask_login import login_required, current_user
+from sqlalchemy import func, case
 from sqlalchemy.orm import joinedload
-from .models import User, Stats, ExhibitorScan, Event
+from .models import User, Stats, ExhibitorScan, Event, Appointment
 from .auth import require_user_type
 from .events import get_active_event, get_active_event_stats_preview
 from .excel_writer import create_records_excel_file
 
 main = Blueprint('main', __name__)
-
 
 @main.route('/')
 @login_required
@@ -41,20 +41,36 @@ def statistics():
 
 @main.route('/statistics', methods = ["POST"])
 @login_required
-@require_user_type("ADMIN", "STAFF")
+@require_user_type("ADMIN")
 def statistics_post():
 
     data = request.get_json()
     option:str = data.get('selected_option', '')
     stats = {}
+    exhibitors_scans = []
 
     if option:
         stats_id = int(option)
         stats_record = Stats.query.filter_by(stats_id = stats_id).first()
         if stats_record:
             stats = stats_record.stats
+            scan_totals = (
+                ExhibitorScan.query
+                .join(ExhibitorScan.user)
+                .outerjoin(Appointment, Appointment.e_scan_id == ExhibitorScan.e_scan_id)
+                .filter(ExhibitorScan.event_id == stats_record.event_id)
+                .with_entities(User.company,
+                               func.count(Appointment.e_scan_id),
+                               func.count(case((Appointment.status == True, 1))))
+                .group_by(User.company)
+                .all()
+            )
+            if scan_totals:
+                exhibitors_scans = [{'company': company, 'appt_count': appt_count, 
+                                     'completed_appt_count': completed_appt_count} 
+                                     for company, appt_count, completed_appt_count in scan_totals]
 
-    return jsonify({'stats': stats})
+    return jsonify({'stats': stats, 'exhibitors_scans': exhibitors_scans})
 
 @main.route('/exhibitor-scanner')
 @login_required
@@ -74,7 +90,6 @@ def exhibitor_scanner_post():
 @require_user_type("ADMIN", "EXHIBITOR")
 def exhibitor_records():
     return render_template("exhibitor_records.html")
-
 
 @main.route('/exhibitor-records', methods=["POST"])
 @login_required
@@ -151,7 +166,8 @@ def export_exhibitor_records():
             "EMAIL": scan.scanned_a_email,
             "EMPRESA": scan.scanned_a_company,
             "NOTAS": scan.notes,
-            "CITA": "✓" if scan.appointment else ""
+            "CITA": "✓" if scan.appointment else "",
+            "ESTADO DE LA CITA": "" if not scan.appointment else "Completada" if scan.appointment.status else "No Completada" if scan.appointment.status is False else "Pendiente"
         }
         for scan in scan_records
     ]

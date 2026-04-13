@@ -10,38 +10,38 @@
 
 {% block content %}
 
-<section class="content-section">
+    <section class="content-section">
 
-    <div class="d-flex justify-content-between mb-3 mx-3" id="topDiv">
-        <span class="text-muted" id="activeEventLabel">
-            {% if active_event %}
-                Registros para: <strong>{{ active_event.location }} {{ active_event.year }}</strong>
-                <span class="small">({{ active_event.start_date.strftime('%d/%m/%Y') }} – {{ active_event.end_date.strftime('%d/%m/%Y') }})</span>
-            {% else %}
-                No hay evento activo para la fecha de hoy.
-            {% endif %}
-        </span>
+        <div class="d-flex justify-content-between mb-3 mx-3" id="topDiv">
+            <span class="text-muted" id="activeEventLabel">
+                {% if active_event %}
+                    Registros para: <strong>{{ active_event.location }} {{ active_event.year }}</strong>
+                    <span class="small">({{ active_event.start_date.strftime('%d/%m/%Y') }} – {{ active_event.end_date.strftime('%d/%m/%Y') }})</span>
+                {% else %}
+                    No hay evento activo para la fecha de hoy.
+                {% endif %}
+            </span>
 
-    
-    </div>
+        
+        </div>
 
-    <div class="table-responsive mx-2 overflow-auto">
-        <table class="table table-bordered border-dark align-middle text-center full-table" id="recordsTable" style="display:table;flex: 1;">
-            <thead>
-                <tr>
-                    <th style="width: 3rem;"></th>
-                    <th>Nombre Completo</th>
-                    <th>Correo</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-    
-</section>
+        <div class="table-responsive mx-2 overflow-auto">
+            <table class="table table-bordered border-dark align-middle text-center full-table" id="recordsTable" style="display:table;flex: 1;">
+                <thead>
+                    <tr>
+                        <th style="width: 3rem;"></th>
+                        <th>Nombre Completo</th>
+                        <th>Correo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+        
+    </section>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="{{ url_for('static', filename='js/records.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', filename='js/records.js') }}"></script>
 
 {% endblock %}
