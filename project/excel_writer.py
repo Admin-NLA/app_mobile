@@ -43,10 +43,11 @@ def create_records_excel_file(data:list, edition:str):
         for i, col in enumerate(df.columns):
             if col == 'NOTAS':
                 worksheet.set_column(i,i,50, wrap_format)
+            elif col == 'REAGENDADA':
+                worksheet.set_column(i,i,15, wrap_format)
             else:
                 col_width = max(len(str(col)), df[col].astype(str).map(len).max())
                 worksheet.set_column(i, i, col_width + 2, workbook.add_format({'valign': 'vcenter'}))
 
     output.seek(0)
     return output
-

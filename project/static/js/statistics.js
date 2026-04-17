@@ -5,6 +5,7 @@ const generalTable1 = document.getElementById("generalTable1");
 const attendeesTable = document.getElementById("attendeesTable");
 const exhibitorsTable = document.getElementById("exhibitorsTable")
 const dailyTable = document.getElementById("dailyTable");
+const exhibitorGeneralTable = document.getElementById("exhibitorGeneralTable")
 const exhibitorScansTable = document.getElementById("exhibitorScansTable");
 
 const searchInput = document.getElementById("searchInput");
@@ -14,7 +15,7 @@ const tableMap = {
     generalStats: [generalTable, generalTable1],
     attendeeStats: [attendeesTable],
     dailyStats: [dailyTable],
-    exhibitorStats: [exhibitorsTable],
+    exhibitorStats: [exhibitorGeneralTable, exhibitorsTable],
     exhibitorScansStats: [exhibitorScansTable]
 };
 
@@ -110,6 +111,11 @@ function updateData() {
                         day4Cell.textContent = attendees[nAttendee]["Día 4"];
 
                     }
+
+                    const exGeneralRow = exhibitorGeneralTable.tBodies[0].rows[0];
+                    exGeneralRow.cells[0].textContent = stats.total_exhibitors;
+                    exGeneralRow.cells[1].textContent = stats.daily_exhibitor_stats.day_3.actual;
+                    exGeneralRow.cells[2].textContent = stats.daily_exhibitor_stats.day_4.actual;
 
                     exhibitorsTable.querySelector("tbody").innerHTML = "";
                     for (let nExhibitor = 0; nExhibitor < exhibitors.length; nExhibitor++) {

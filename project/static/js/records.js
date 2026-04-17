@@ -3,7 +3,7 @@ const activeEventLabel = document.getElementById("activeEventLabel");
 let records;
 let eventName;
 let c_user;
-const notesChangedMap = {}
+const notesChangedMap = {};
 
 function toggleExportButton(activeEvent){
     const div =  document.getElementById("topDiv");
@@ -87,26 +87,36 @@ function renderRecords() {
         detailsCell.innerHTML = `
             <div class="container-fluid d-flex flex-column flex-md-row text-start">
                 <div class="container d-flex flex-column justify-content-center mb-3 fs-5">
-                    <span><strong>Nombre:</strong> ${record.name}</span>
                     <span><strong>Día:</strong> ${record.day}</span>
+                    <span><strong>Nombre:</strong> ${record.name}</span>
                     <span><strong>Teléfono:</strong> ${record.phone || "N/A"}</span>
                     <span><strong>Empresa:</strong> ${record.company || "N/A"}</span>
-                    <span class="d-flex flex-column flex-md-row mt-4"><strong class="me-sm-2 mb-1 mb-sm-0">Estado de la Cita:</strong> <span id="appointmentStatus${record.e_scan_id}"></span></span>
-                    <span>
-                        <input class="form-check-input" type="checkbox" id="appointmentCheck${record.e_scan_id}" disabled>
-                        <label class="form-check-label" for="appointmentCheck${record.e_scan_id}">Marcar Cita como Completada</label>
-                    </span>
+                    <span class="fw-bold mt-3 mb-2">Estado de la Cita:</span>
+                    <div id="appointmentStatus${record.e_scan_id}">
+                        <span class="fw-bold text-white"></span>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input check-yes" type="radio" name="apptStatus${record.e_scan_id}" 
+                            id="appointmentCompletedRadio${record.e_scan_id}" value="completed" disabled>
+                        <label class="form-check-label" for="appointmentCompletedRadio${record.e_scan_id}">Marcar Cita como Completada</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input check-no" type="radio" name="apptStatus${record.e_scan_id}" 
+                            id="appointmentNoCompletedRadio${record.e_scan_id}" value="not_completed" disabled>
+                        <label class="form-check-label" for="appointmentNoCompletedRadio${record.e_scan_id}">Marcar Cita como No Completada</label>
+                    </div>
                 </div>
                 <div class="container d-flex flex-column justify-content-center mb-3">
-                    <span class="mb-3"><strong>Notas:</strong></span> 
-                    <textarea class="form-control border-dark" rows="8" id="notesText${record.e_scan_id}">${record.notes || ""}</textarea>
+                    <span class="mb-2"><strong>Notas:</strong></span>
+                    <textarea class="form-control border-dark" rows="10" id="notesText${record.e_scan_id}">${record.notes || ""}</textarea>
                 </div>
             </div>
             <div class="container-fluid d-flex flex-column flex-md-row text-start">
                 <div class="container d-flex flex-column justify-content-center mb-3 order-2 order-md-1" id="scheduleContainer${record.e_scan_id}">
                 </div>
                 <div class="container d-flex flex-column justify-content-center mb-3 order-1 order-md-2">
-                    <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}').value)">Guardar</button>
+                    <button disabled class="btn btn-sm btn-dark" id="saveBtn${record.e_scan_id}" 
+                    onclick="updateNotes(${record.e_scan_id}, document.getElementById('notesText${record.e_scan_id}').value)">Guardar</button>
                 </div>
             </div>
         `;
@@ -135,8 +145,9 @@ function renderRecords() {
         });
         
         const apptStatusText = document.getElementById(`appointmentStatus${record.e_scan_id}`);
-        const apptCheck = document.getElementById(`appointmentCheck${record.e_scan_id}`);
-        let statusCheckState, statusText, statusTextClass;
+        const apptCompletedRadio = document.getElementById(`appointmentCompletedRadio${record.e_scan_id}`);
+        const apptNoCompletedRadio = document.getElementById(`appointmentNoCompletedRadio${record.e_scan_id}`);
+        let statusText, statusTextClass;
 
         scheduleBtn.addEventListener("click", async () => {
             const scheduleResult = await Swal.fire({
@@ -211,10 +222,11 @@ function renderRecords() {
                 record.appointment = responseData.appointment;
                 scheduleBtn.textContent = "Ver Cita";
 
-                [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
-                apptStatusText.textContent = statusText;
+                [statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
+                apptStatusText.querySelector('span').textContent = statusText;
                 apptStatusText.className = statusTextClass;
-                apptCheck.checked = statusCheckState;
+                apptCompletedRadio.disabled = false;
+                apptNoCompletedRadio.disabled = false;
 
                 await Swal.fire({
                     theme: "dark",
@@ -232,17 +244,23 @@ function renderRecords() {
             statusText = "Cita no Agendada";
             statusTextClass = "text-muted";
         } else {
-            apptCheck.disabled = false;
-            [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
-            apptCheck.checked = statusCheckState;
+            apptCompletedRadio.disabled = false;
+            apptNoCompletedRadio.disabled = false;
+            [statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
         }
 
-        apptStatusText.textContent = statusText;
+        apptStatusText.querySelector('span').textContent = statusText;
         apptStatusText.className = statusTextClass;
 
-        apptCheck.addEventListener("change", function () {
-            updateAppointmentStatus(this, record);
+        document.querySelectorAll(`input[name="apptStatus${record.e_scan_id}"]`)
+        .forEach(radio => {
+            radio.addEventListener("change", function () {
+            if (this.checked) {
+                updateAppointmentStatus(this, record);
+            }
+            });
         });
+
     });
 }
 
@@ -400,7 +418,7 @@ END:VCALENDAR`;
     });
 }
 
-async function updateAppointmentStatus(checkbox, record) {
+async function updateAppointmentStatus(radio, record) {
     if (!record.appointment) {
         await Swal.fire({
             theme: "dark",
@@ -408,25 +426,26 @@ async function updateAppointmentStatus(checkbox, record) {
             text: "No hay cita agendada. Acción no permitida",
             icon: "warning"
         });
+        radio.checked = false;
         return;
     }
 
-    if(isAppointmentActive(record.appointment)) {
+    if(!hasAppointmentTimeReached(record.appointment)) {
         await Swal.fire({
             theme: "dark",
             title: "<strong>CUIDADO</strong>",
             text: "La fecha y hora de la cita no se ha cumplido. No se actualizó el estado",
             icon: "warning"
         });
-        checkbox.checked = !checkbox.checked;
+        radio.checked = false;
         return;
     }
 
-    const isChecked = checkbox.checked;
+    const isCompleted = radio.value === "completed";
 
     const updatePayload = {
         appointment_id: record.appointment ? record.appointment.appointment_id : 0,
-        status: isChecked
+        status: isCompleted
     };
 
     const response = await fetch("/update-appointment-status", {
@@ -444,15 +463,15 @@ async function updateAppointmentStatus(checkbox, record) {
             text: "No se pudo actualizar el estado de la cita",
             icon: "error"
         });
-        checkbox.checked = !checkbox.checked;
+        radio.checked = false;
         return;
     }
 
-    record.appointment.status = isChecked;
+    record.appointment.status = isCompleted;
 
     const apptStatusText = document.getElementById(`appointmentStatus${record.e_scan_id}`);
-    const [statusCheckState, statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
-    apptStatusText.textContent = statusText;
+    const [statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
+    apptStatusText.querySelector('span').textContent = statusText;
     apptStatusText.className = statusTextClass;
 
     await Swal.fire({
@@ -464,34 +483,61 @@ async function updateAppointmentStatus(checkbox, record) {
 
 }
 
-function isAppointmentActive(appointment) {
-    const today = new Date();
+function hasAppointmentTimeReached(appointment) {
+    const now = new Date();
 
     const [year, month, day] = appointment.date.split("-").map(Number);
     const apptDate = new Date(year, month-1, day);
     const [hours, minutes] = appointment.hour.split(":").map(Number);
     apptDate.setHours(hours,minutes,0,0);
 
-    return today < apptDate;
+    return now >= apptDate;
+}
+
+function isAppointmentExpired(appointment) {
+    const now = new Date();
+
+    const [year, month, day] = appointment.date.split("-").map(Number);
+    const apptDate = new Date(year, month-1, day);
+    const [hours, minutes] = appointment.hour.split(":").map(Number);
+    apptDate.setHours(hours,minutes,0,0);
+
+    const apptDeadline = new Date(apptDate.getTime() + 2 * 60 * 60 * 10000);
+
+    return now >= apptDeadline;
 }
 
 function changeApptDisplayedStatus(appointment) {
-    var statusCheckState,statusText, statusTextClass;
+    var statusText, statusContainerClass;
+
+    const completedRadio = document.getElementById(`appointmentCompletedRadio${appointment.e_scan_id}`);
+    const noCompletedRadio = document.getElementById(`appointmentNoCompletedRadio${appointment.e_scan_id}`);
+
+    completedRadio.checked = false;
+    noCompletedRadio.checked = false;
+
     if (appointment.status) {
-        statusCheckState = true;
+        completedRadio.checked = true;
         statusText = "Cita Completada";
-        statusTextClass = "text-success";
+        statusContainerClass = "d-inline-block bg-success border border-4 border-secondary rounded p-2";
     } else {
         statusCheckState = false;
-        if (isAppointmentActive(appointment)) {
-            statusText = "Cita Pendiente";
-            statusTextClass = "text-warning";
+        if (hasAppointmentTimeReached(appointment)) {
+            if (isAppointmentExpired(appointment) || appointment.status === false) {
+                statusText = "Cita no Completada";
+                statusContainerClass = "d-inline-block bg-danger border border-4 border-secondary rounded p-2";
+                noCompletedRadio.checked = true;
+            } else {
+                statusText = "Cita en Curso";
+                statusContainerClass = "d-inline-block bg-info border border-4 border-secondary rounded p-2";
+            }
+            
         } else {
-            statusText = "Cita no Completada";
-            statusTextClass = "text-danger";
+            statusText = "Cita Pendiente";
+            statusContainerClass = "d-inline-block bg-warning border border-4 border-secondary rounded p-2";
         }
     }
-    return [statusCheckState, statusText, statusTextClass];
+    return [statusText, statusContainerClass];
 }
 
 function escapeICSText(text) {

@@ -178,3 +178,43 @@ tr.hide {
     max-width: 400px;
     min-height: 80px;
 }
+
+.completed {
+    background-color: #e6e6e6;
+    border: 2px solid #2f3850;
+}
+
+.form-check-input.check-yes {
+    border: 2px solid #1b7430;
+}
+
+.form-check-input.check-no {
+    border: 2px solid #831e28;
+}
+
+.form-check-input.check-yes:checked {
+    background-color: #28a745;
+    border: 2px solid #1b7430;
+}
+
+.form-check-input.check-no:checked {
+    background-color: #dc3545;
+    border: 2px solid #831e28;
+}
+
+.form-check-input.check-yes:focus {
+    background-color: #80b88dcc !important;
+    box-shadow: 0 0 0 0.25rem #27843dbd !important;
+    border-color: #3cbf5a !important;
+}
+
+.form-check-input.check-no:focus {
+    background-color: #b16e74ab !important;
+    box-shadow: 0 0 0 0 0.25rem #ec47589f !important;
+    border-color: #c26972 !important;
+}
+
+textarea {
+    resize: none;
+    overflow: auto;
+}

@@ -71,17 +71,20 @@ def get_active_event_stats_preview():
         daily_types = stats.get("daily_attendee_type_scans", {})
         daily_scanned_sh = stats.get("daily_scanned_sh", {})
 
-        actual_list = daily_stats.get(day_key, {}).get("actual", [])
+        total = daily_stats.get(day_key, {}).get("actual", [])
         type_stats = daily_types.get(day_key, {})
+
+        daily_exhibitor_stats = stats.get("daily_exhibitor_stats", {})
 
         payload = {
             "event_id": active_event.event_id,
             "day": day_number,
-            "total": len(actual_list),
+            "total": daily_stats.get(day_key, {}).get("actual", 0),
             "general": type_stats.get("general", 0),
             "courses": type_stats.get("courses", 0),
             "sessions": type_stats.get("sessions", 0),
             "scholarships": daily_scanned_sh.get(day_key, 0),
+            "exhibitors": daily_exhibitor_stats.get(day_key,{}).get("actual", "---"),
             "updated_at": stats_row.updated_at.date().isoformat() if stats_row.updated_at else None,
         }
 

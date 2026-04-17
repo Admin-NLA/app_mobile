@@ -163,8 +163,6 @@ def add_or_update_appointment():
     date = str(data.get('date', ''))
     hour = str(data.get('hour', ''))
     description = str(data.get('description', ''))
-    
-    print(date, hour, description)
 
     appointment = Appointment.query.filter_by(appointment_id=appointment_id).first()
     if appointment:
@@ -223,8 +221,6 @@ def update_appointment_status():
     
     appointment = Appointment.query.filter_by(appointment_id=appointment_id).first()
     if appointment:
-        if appointment.status == status:
-            return jsonify({'message': 'No se realizaron cambios en el estado de la cita'})
         appointment.status = status
         db.session.commit()
         return jsonify({'message': 'Estado de la cita actualizado'})

@@ -6,6 +6,7 @@ from .models import User, Stats, ExhibitorScan, Event, Appointment
 from .auth import require_user_type
 from .events import get_active_event, get_active_event_stats_preview
 from .excel_writer import create_records_excel_file
+from .appointments import setAppointmentStatus
 
 main = Blueprint('main', __name__)
 
@@ -54,6 +55,7 @@ def statistics_post():
         stats_record = Stats.query.filter_by(stats_id = stats_id).first()
         if stats_record:
             stats = stats_record.stats
+            companies = stats['exhibitor_companies']
             scan_totals = (
                 ExhibitorScan.query
                 .join(ExhibitorScan.user)
@@ -65,10 +67,20 @@ def statistics_post():
                 .group_by(User.company)
                 .all()
             )
-            if scan_totals:
-                exhibitors_scans = [{'company': company, 'appt_count': appt_count, 
-                                     'completed_appt_count': completed_appt_count} 
-                                     for company, appt_count, completed_appt_count in scan_totals]
+            scan_dict = {
+                company.upper(): {
+                    'appt_count': appt_count,
+                    'completed_appt_count': completed_appt_count
+                }
+                for company, appt_count, completed_appt_count in scan_totals
+            }
+
+            exhibitors_scans = []
+
+            for company in companies:
+                data = scan_dict.get(company, {'appt_count':0, 'completed_appt_count':0})
+                exhibitors_scans.append({'company': company, 'appt_count': data['appt_count'], 
+                                     'completed_appt_count': data['completed_appt_count']})
 
     return jsonify({'stats': stats, 'exhibitors_scans': exhibitors_scans})
 
@@ -167,7 +179,9 @@ def export_exhibitor_records():
             "EMPRESA": scan.scanned_a_company,
             "NOTAS": scan.notes,
             "CITA": "✓" if scan.appointment else "",
-            "ESTADO DE LA CITA": "" if not scan.appointment else "Completada" if scan.appointment.status else "No Completada" if scan.appointment.status is False else "Pendiente"
+            "FECHA CITA": scan.appointment.date,
+            "ESTADO DE LA CITA": setAppointmentStatus(scan.appointment) if scan.appointment else "---",
+            "REAGENDADA": "---" if not scan.appointment else "✓" if (scan.appointment.created_at != scan.appointment.updated_at) else ""
         }
         for scan in scan_records
     ]
