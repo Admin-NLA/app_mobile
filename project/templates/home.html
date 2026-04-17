@@ -43,18 +43,24 @@
                          <div class="badge bg-dark p-3 w-100 text-start">
                             <h5 class="mb-3" id="homeStatsTitle">Escaneados Hoy</h5>
 
-                            <div class="row text-center g-2 mt-2" id="homeStatsBody">
+                            <div id="homeStatsBody">
                                 {% if g.active_event_stats_preview %}
+                                <div class="row text-center g-2 mt-2 justify-content-center">
                                     <div class="col-6 col-md-2"><strong>Total:</strong> <span data-k="total">{{ g.active_event_stats_preview.total }}</span></div>
-                                    <div class="col-6 col-md-2"><strong>General:</strong> <span data-k="total">{{ g.active_event_stats_preview.general }}</span></div>
-                                    <div class="col-6 col-md-2"><strong>Cursos:</strong> <span data-k="total">{{ g.active_event_stats_preview.courses }}</span></div>
-                                    <div class="col-6 col-md-2"><strong>Sesiones:</strong> <span data-k="total">{{ g.active_event_stats_preview.sessions }}</span></div>
-                                    <div class="col-6 col-md-2"><strong>Becados:</strong> <span data-k="total">{{ g.active_event_stats_preview.scholarships }}</span></div>
-                                    <div class="col-6 col-md-2"><strong>Total Expositores:</strong> <span data-k="total">{{ g.active_event_stats_preview.scholarships }}</span></div>
-                                    <div class="col-6 col-md-2"><strong>Citas Agendadas:</strong> <span data-k="total">{{ g.active_event_stats_preview.scholarships }}</span></div>
-                                    <div class="col-6 col-md-2"><strong>Citas Completadas:</strong> <span data-k="total">{{ g.active_event_stats_preview.scholarships }}</span></div>
+                                    <div class="col-6 col-md-2"><strong>General:</strong> <span data-k="general">{{ g.active_event_stats_preview.general }}</span></div>
+                                    <div class="col-6 col-md-2"><strong>Cursos:</strong> <span data-k="courses">{{ g.active_event_stats_preview.courses }}</span></div>
+                                    <div class="col-6 col-md-2"><strong>Sesiones:</strong> <span data-k="sessions">{{ g.active_event_stats_preview.sessions }}</span></div>
+                                    <div class="col-6 col-md-2"><strong>Becados:</strong> <span data-k="scholarships">{{ g.active_event_stats_preview.scholarships }}</span></div>
+                                    <div class="col-6 col-md-2"><strong>Expositores:</strong> <span data-k="exhibitors">{{ g.active_event_stats_preview.exhibitors }}</span></div>
+                                </div>
+                                <div class="row text-center g-2 mt-2 justify-content-center">
+                                    <div class="col-12 col-md-4"><strong>Citas agendadas (hoy):</strong> <span data-k="appointments_scheduled">{{ g.active_event_stats_preview.appointments_scheduled }}</span></div>
+                                    <div class="col-12 col-md-4"><strong>Citas completadas (hoy):</strong> <span data-k="appointments_completed">{{ g.active_event_stats_preview.appointments_completed }}</span></div>
+                                </div>
                                 {% else %}
-                                    <div class="col-12 text-secondary" id="homeStatsEmpty">Sin estadísticas disponibles para hoy</div>
+                                    <div class="row text-center g-2 mt-2">
+                                        <div class="col-12 text-secondary" id="homeStatsEmpty">Sin estadísticas disponibles para hoy</div>
+                                    </div>
                                 {% endif %}
                             </div>
 

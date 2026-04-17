@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 from flask import g
-from .models import Event, Stats
+from .models import Event, Stats, Appointment, ExhibitorScan
 
 _active_event_cache = (None, None)
 
@@ -17,6 +17,13 @@ def get_active_event():
     if current:
         return current
     return Event.query.filter(Event.start_date >= d).order_by(Event.start_date.asc()).first()
+
+def is_exhibitor_edit_window(event, today=None):
+    if not event:
+        return False
+    current_day = today or date.today()
+    day_number = (current_day - event.start_date).days + 1
+    return day_number in (3, 4)
 
 def set_active_event_for_request():
     global _active_event_cache
@@ -71,20 +78,40 @@ def get_active_event_stats_preview():
         daily_types = stats.get("daily_attendee_type_scans", {})
         daily_scanned_sh = stats.get("daily_scanned_sh", {})
 
-        total = daily_stats.get(day_key, {}).get("actual", [])
+        total = len(daily_stats.get(day_key, {}).get("actual", []))
         type_stats = daily_types.get(day_key, {})
 
         daily_exhibitor_stats = stats.get("daily_exhibitor_stats", {})
+        today_str = today.isoformat()
+        appointments_scheduled = (
+            Appointment.query.join(ExhibitorScan)
+            .filter(
+                ExhibitorScan.event_id == active_event.event_id,
+                Appointment.date == today_str,
+            )
+            .count()
+        )
+        appointments_completed = (
+            Appointment.query.join(ExhibitorScan)
+            .filter(
+                ExhibitorScan.event_id == active_event.event_id,
+                Appointment.date == today_str,
+                Appointment.status.is_(True),
+            )
+            .count()
+        )
 
         payload = {
             "event_id": active_event.event_id,
             "day": day_number,
-            "total": daily_stats.get(day_key, {}).get("actual", 0),
+            "total": total,
             "general": type_stats.get("general", 0),
             "courses": type_stats.get("courses", 0),
             "sessions": type_stats.get("sessions", 0),
             "scholarships": daily_scanned_sh.get(day_key, 0),
             "exhibitors": daily_exhibitor_stats.get(day_key,{}).get("actual", "---"),
+            "appointments_scheduled": appointments_scheduled,
+            "appointments_completed": appointments_completed,
             "updated_at": stats_row.updated_at.date().isoformat() if stats_row.updated_at else None,
         }
 

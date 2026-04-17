@@ -4,7 +4,7 @@ from sqlalchemy import func, case
 from sqlalchemy.orm import joinedload
 from .models import User, Stats, ExhibitorScan, Event, Appointment
 from .auth import require_user_type
-from .events import get_active_event, get_active_event_stats_preview
+from .events import get_active_event, get_active_event_stats_preview, is_exhibitor_edit_window
 from .excel_writer import create_records_excel_file
 from .appointments import setAppointmentStatus
 
@@ -110,8 +110,10 @@ def exhibitor_records_post():
     active_event = g.active_event
     records = []
     event_payload = None
+    is_editable_window = False
 
     if active_event:
+        is_editable_window = is_exhibitor_edit_window(active_event)
         scan_records = (
             ExhibitorScan.query
             .options(joinedload(ExhibitorScan.appointment))
@@ -143,9 +145,15 @@ def exhibitor_records_post():
             "start_date": active_event.start_date.strftime('%d/%m/%Y'),
             "end_date": active_event.end_date.strftime('%d/%m/%Y'),
             "total_records": len(records),
+            "is_editable_window": is_editable_window,
         }
 
-    return jsonify({"event": event_payload, "records": records, "current_user": current_user.company})
+    return jsonify({
+        "event": event_payload,
+        "records": records,
+        "current_user": current_user.company,
+        "is_editable_window": is_editable_window
+    })
 
 @main.route('/export-records')
 @login_required

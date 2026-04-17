@@ -1,12 +1,16 @@
-from flask import Blueprint, request, jsonify, g, Response
+from flask import Blueprint, request, jsonify, g, Response, stream_with_context
 from flask_login import login_required, current_user
 from uuid import uuid4
 from datetime import datetime, date, timedelta
+import json
 from sqlalchemy.orm import joinedload
 
-from .state import pending_scans, scan_results, lock
+from queue import Empty
+from .state import pending_scans, scan_results, lock, build_records_channel, connect_records_client, disconnect_records_client, publish_records_event
+
 from .auth import service_required, require_user_type
 from .models import ExhibitorScan, Appointment
+from .events import is_exhibitor_edit_window
 from . import db
 
 def get_location():
@@ -34,6 +38,12 @@ def insert_scan_record(attendee: dict, event_id):
     )
     db.session.add(record)
     db.session.commit()
+    channel = build_records_channel(current_user.company, event_id)
+    if channel:
+        publish_records_event(
+            channel,
+            {"type": "record_created", "e_scan_id": record.e_scan_id}
+        )
     return True, record.to_dict()
 
 scan = Blueprint("scan", __name__)
@@ -137,6 +147,8 @@ def process_exhibitor_scan():
 @login_required
 @require_user_type("ADMIN", "EXHIBITOR")
 def update_exhibitor_record_notes():
+    if not is_exhibitor_edit_window(g.get("active_event")):
+        return jsonify({'success': False, 'message': 'Evento Finalizado. Sólo puedes consultar y exportar contactos.'}), 403
     data = request.get_json()
     e_scan_id = data.get('e_scan_id', '')
     notes = data.get('notes', '')
@@ -146,6 +158,12 @@ def update_exhibitor_record_notes():
             return jsonify({'success': True, 'message': 'No se realizaron cambios en las notas'})    
         record.notes = notes
         db.session.commit()
+        channel = build_records_channel(record.user.company, record.event_id)
+        if channel:
+            publish_records_event(
+                channel,
+                {"type": "notes_updated", "e_scan_id": record.e_scan_id}
+            )
         return jsonify({'success': True, 'message': 'Notas guardadas exitosamente'})
     else:
         return jsonify({'success': False, 'message': 'No se pudieron guardar las notas'})
@@ -156,6 +174,8 @@ def update_exhibitor_record_notes():
 @login_required
 @require_user_type("ADMIN", "EXHIBITOR")
 def add_or_update_appointment():
+    if not is_exhibitor_edit_window(g.get("active_event")):
+        return jsonify({'message': 'Evento Finalizado. Sólo puedes consultar y exportar contactos.'}), 403
     data = request.get_json()
 
     appointment_id = int(data.get('appointment_id', 0))
@@ -171,7 +191,14 @@ def add_or_update_appointment():
         appointment.date = date
         appointment.hour = hour
         appointment.description = description
+        appointment.status = None
         db.session.commit()
+        channel = build_records_channel(appointment.exhibitor_scan.user.company, appointment.exhibitor_scan.event_id)
+        if channel:
+            publish_records_event(
+                channel,
+                {"type": "appointment_updated", "e_scan_id": appointment.e_scan_id}
+            )
         return jsonify({'message': 'Cita actualizada exitosamente', 'appointment': appointment.to_dict()})
 
     e_scan_id = data.get('e_scan_id', '')
@@ -184,6 +211,14 @@ def add_or_update_appointment():
     )
     db.session.add(new_appt)
     db.session.commit()
+    scan_record = ExhibitorScan.query.filter_by(e_scan_id=e_scan_id).first()
+    if scan_record:
+        channel = build_records_channel(scan_record.user.company, scan_record.event_id)
+        if channel:
+            publish_records_event(
+                channel,
+                {"type": "appointment_updated", "e_scan_id": scan_record.e_scan_id}
+            )
     
     return jsonify({"message": "Cita agendada correctamente", 'appointment': new_appt.to_dict()})
 
@@ -215,6 +250,8 @@ END:VCALENDAR"""
 @login_required
 @require_user_type("ADMIN", "EXHIBITOR")
 def update_appointment_status():
+    if not is_exhibitor_edit_window(g.get("active_event")):
+        return jsonify({'message': 'Evento Finalizado. Sólo puedes consultar y exportar contactos.'}), 403
     data = request.get_json()
     appointment_id = int(data.get('appointment_id', 0))
     status = data.get('status', None)
@@ -223,6 +260,41 @@ def update_appointment_status():
     if appointment:
         appointment.status = status
         db.session.commit()
+        channel = build_records_channel(appointment.exhibitor_scan.user.company, appointment.exhibitor_scan.event_id)
+        if channel:
+            publish_records_event(
+                channel,
+                {"type": "appointment_status_updated", "e_scan_id": appointment.e_scan_id}
+            )
         return jsonify({'message': 'Estado de la cita actualizado'})
     
     return jsonify({'message': 'Cita no encontrada'})
+
+@scan.route("/records-stream")
+@login_required
+@require_user_type("ADMIN", "EXHIBITOR")
+def records_stream():
+    active_event = g.get("active_event")
+    channel = build_records_channel(current_user.company, active_event.event_id if active_event else None)
+    if not channel:
+        return jsonify({"message": "No hay evento activo"}), 400
+
+    client_queue = connect_records_client(channel)
+
+    @stream_with_context
+    def event_stream():
+        try:
+            while True:
+                try:
+                    event_payload = client_queue.get(timeout=20)
+                    yield f"data: {json.dumps(event_payload)}\n\n"
+                except Empty:
+                    yield ": keep-alive\n\n"
+        finally:
+            disconnect_records_client(channel, client_queue)
+
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

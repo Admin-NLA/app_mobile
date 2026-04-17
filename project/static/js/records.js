@@ -3,7 +3,11 @@ const activeEventLabel = document.getElementById("activeEventLabel");
 let records;
 let eventName;
 let c_user;
+let canEditRecords = false;
 const notesChangedMap = {};
+let recordsStream = null;
+let streamRetryTimeout = null;
+const expandedRecordIds = new Set();
 
 function toggleExportButton(activeEvent){
     const div =  document.getElementById("topDiv");
@@ -29,12 +33,13 @@ function updateEventLabel(eventData) {
     if (!activeEventLabel) return;
     if (eventData) {
         eventName = `${eventData.location} ${eventData.year}`;
-        activeEventLabel.innerHTML = `<strong>${eventData.total_records} Registros</strong> para: <strong>${eventName}</strong> <span class="small">(${eventData.start_date} – ${eventData.end_date})</span>`;
-        //document.getElementById("exportBtn").disabled = false;
+        const modeLabel = eventData.is_editable_window
+            ? `<span class="badge bg-success ms-2">Modo edición</span>`
+            : `<span class="badge bg-secondary ms-2">Modo consulta</span>`;
+        activeEventLabel.innerHTML = `<strong>${eventData.total_records} Registros</strong> para: <strong>${eventName}</strong> <span class="small">(${eventData.start_date} – ${eventData.end_date})</span> ${modeLabel}`;
         toggleExportButton(true);
     } else {
         activeEventLabel.textContent = "No hay evento activo para la fecha de hoy.";
-        //document.getElementById("exportBtn").disabled = true;
         toggleExportButton(false);
     }
 }
@@ -45,10 +50,21 @@ function renderRecords() {
     if (!theadRow || !tbody) return;
 
     tbody.innerHTML = "";
+    Object.keys(notesChangedMap).forEach((key) => {
+        delete notesChangedMap[key];
+    });
 
-    if (window.innerWidth > 768) theadRow.insertCell();
+    while (theadRow.cells.length > 3) {
+        theadRow.deleteCell(-1);
+    }
+    if (window.innerWidth > 768) {
+        theadRow.insertCell();
+    }
+
+    const visibleRecordIds = new Set();
 
     (records || []).forEach((record) => {
+        visibleRecordIds.add(record.e_scan_id);
         const row = tbody.insertRow();
         row.classList.add("align-middle");
 
@@ -142,7 +158,17 @@ function renderRecords() {
             const isHidden = detailsRow.classList.contains("d-none");
             detailsRow.classList.toggle("d-none", !isHidden);
             btn.textContent = isHidden ? "−" : "+";
+            if (isHidden) {
+                expandedRecordIds.add(record.e_scan_id);
+            } else {
+                expandedRecordIds.delete(record.e_scan_id);
+            }
         });
+
+        if (expandedRecordIds.has(record.e_scan_id)) {
+            detailsRow.classList.remove("d-none");
+            btn.textContent = "−";
+        }
         
         const apptStatusText = document.getElementById(`appointmentStatus${record.e_scan_id}`);
         const apptCompletedRadio = document.getElementById(`appointmentCompletedRadio${record.e_scan_id}`);
@@ -150,6 +176,15 @@ function renderRecords() {
         let statusText, statusTextClass;
 
         scheduleBtn.addEventListener("click", async () => {
+            if (!canEditRecords && !record.appointment) {
+                await Swal.fire({
+                    theme: "dark",
+                    title: "<strong>AVISO</strong>",
+                    text: "Evento Finalizado. Sólo puedes consultar y exportar contactos.",
+                    icon: "info"
+                });
+                return;
+            }
             const scheduleResult = await Swal.fire({
                 theme: "dark",
                 title: `<strong>${record.appointment ? "Actualizar Cita" : "Agendar Cita"}</strong>`,
@@ -167,7 +202,7 @@ function renderRecords() {
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
-                showDenyButton: true,
+                showDenyButton: Boolean(record.appointment),
                 confirmButtonText: record.appointment ? "Actualizar Cita" : "Guardar Cita",
                 denyButtonText: "Descargar Cita",
                 confirmButtonColor: "#4caf50",
@@ -192,6 +227,15 @@ function renderRecords() {
             });
 
             if (scheduleResult.isConfirmed) {
+                if (!canEditRecords) {
+                    await Swal.fire({
+                        theme: "dark",
+                        title: "<strong>AVISO</strong>",
+                        text: "Evento Finalizado. Sólo puedes consultar y exportar contactos.",
+                        icon: "info"
+                    });
+                    return;
+                }
                 const { date, hour, description } = scheduleResult.value;
 
                 const schedulePayload = {
@@ -249,6 +293,8 @@ function renderRecords() {
             [statusText, statusTextClass] = changeApptDisplayedStatus(record.appointment);
         }
 
+        saveBtn.disabled = true;
+
         apptStatusText.querySelector('span').textContent = statusText;
         apptStatusText.className = statusTextClass;
 
@@ -262,9 +308,24 @@ function renderRecords() {
         });
 
     });
+
+    [...expandedRecordIds].forEach((recordId) => {
+        if (!visibleRecordIds.has(recordId)) {
+            expandedRecordIds.delete(recordId);
+        }
+    });
 }
 
 async function updateNotes(e_scan_id, notes) {
+    if (!canEditRecords) {
+        await Swal.fire({
+            theme: "dark",
+            title: "<strong>AVISO</strong>",
+            text: "Evento Finalizado. Sólo puedes consultar y exportar contactos.",
+            icon: "info"
+        });
+        return;
+    }
     if (!notesChangedMap[e_scan_id]) {
         await Swal.fire({
             theme: "dark",
@@ -322,11 +383,62 @@ function loadRecords() {
         .then((response) => response.json())
         .then((data) => {
             c_user = data.current_user;
+            canEditRecords = Boolean(data.is_editable_window);
             updateEventLabel(data.event);
             records = data.records;
             renderRecords();
+            if (data.event && !recordsStream) {
+                startRecordsStream();
+            }
         });
 }
+
+function hasPendingLocalChanges() {
+    return Object.values(notesChangedMap).some(Boolean);
+}
+
+function startRecordsStream() {
+    if (recordsStream) return;
+
+    recordsStream = new EventSource("/records-stream");
+    recordsStream.onopen = () => {
+        if (hasPendingLocalChanges()) {
+            return;
+        }
+        loadRecords();
+    };
+
+    recordsStream.onmessage = () => {
+        if (hasPendingLocalChanges()) {
+            return;
+        }
+        loadRecords();
+    };
+
+    recordsStream.onerror = () => {
+        if (recordsStream) {
+            recordsStream.close();
+            recordsStream = null;
+        }
+        if (!streamRetryTimeout) {
+            streamRetryTimeout = setTimeout(() => {
+                streamRetryTimeout = null;
+                startRecordsStream();
+            }, 3000);
+        }
+    };
+}
+
+window.addEventListener("beforeunload", () => {
+    if (recordsStream) {
+        recordsStream.close();
+        recordsStream = null;
+    }
+    if (streamRetryTimeout) {
+        clearTimeout(streamRetryTimeout);
+        streamRetryTimeout = null;
+    }
+});
 
 async function exportRecords() {
 
@@ -419,6 +531,16 @@ END:VCALENDAR`;
 }
 
 async function updateAppointmentStatus(radio, record) {
+    if (!canEditRecords) {
+        await Swal.fire({
+            theme: "dark",
+            title: "<strong>AVISO</strong>",
+            text: "Evento Finalizado. Sólo puedes consultar y exportar contactos.",
+            icon: "info"
+        });
+        radio.checked = false;
+        return;
+    }
     if (!record.appointment) {
         await Swal.fire({
             theme: "dark",

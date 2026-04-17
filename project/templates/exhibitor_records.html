@@ -12,7 +12,7 @@
 
     <section class="content-section">
 
-        <div class="d-flex justify-content-between mb-3 mx-3" id="topDiv">
+        <div class="d-flex justify-content-between mx-3" id="topDiv">
             <span class="text-muted" id="activeEventLabel">
                 {% if active_event %}
                     Registros para: <strong>{{ active_event.location }} {{ active_event.year }}</strong>
@@ -21,9 +21,14 @@
                     No hay evento activo para la fecha de hoy.
                 {% endif %}
             </span>
-
-        
+            
         </div>
+
+        {% if active_event %}
+            <span class="text-muted fst-italic mx-3 mb-3" id="eventDisclaimer">
+                Disponible durante el evento y los primeros 30 días después de su finalización.
+            </span>
+        {% endif %}
 
         <div class="table-responsive mx-2 overflow-auto">
             <table class="table table-bordered border-dark align-middle text-center full-table" id="recordsTable" style="display:table;flex: 1;">
