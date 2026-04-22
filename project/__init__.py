@@ -2,12 +2,14 @@ from flask import Flask, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_cors import CORS
+from flask_socketio import SocketIO
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
 db = SQLAlchemy()
+socketio = SocketIO(cors_allowed_origins="*", logger=True, engineio_logger=True)
 
 def create_app():
 
@@ -25,6 +27,10 @@ def create_app():
     CORS(app)
 
     db.init_app(app)
+
+    socketio.init_app(app)
+
+    from . import sockets
 
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'

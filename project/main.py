@@ -129,10 +129,11 @@ def exhibitor_records_post():
             {   
                 "e_scan_id": scan.e_scan_id,
                 "day": scan.created_at.strftime('%d/%m/%Y'),
-                "name": f"{scan.scanned_a_last_name} {scan.scanned_a_name}",
-                "phone": scan.scanned_a_phone,
-                "email": scan.scanned_a_email,
-                "company": scan.scanned_a_company,
+                "scanned_a_last_name": scan.scanned_a_last_name,
+                "scanned_a_name": scan.scanned_a_name,
+                "scanned_a_phone": scan.scanned_a_phone,
+                "scanned_a_email": scan.scanned_a_email,
+                "scanned_a_company": scan.scanned_a_company,
                 "notes": scan.notes,
                 "appointment": scan.appointment.to_dict() if scan.appointment else None
             }

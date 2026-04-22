@@ -1,17 +1,15 @@
-from flask import Blueprint, request, jsonify, g, Response, stream_with_context
+from flask import Blueprint, request, jsonify, g, Response
 from flask_login import login_required, current_user
 from uuid import uuid4
 from datetime import datetime, date, timedelta
-import json
 from sqlalchemy.orm import joinedload
 
-from queue import Empty
-from .state import pending_scans, scan_results, lock, build_records_channel, connect_records_client, disconnect_records_client, publish_records_event
+from .state import pending_scans, scan_results, lock, build_records_channel, publish_records_event
 
 from .auth import service_required, require_user_type
 from .models import ExhibitorScan, Appointment
 from .events import is_exhibitor_edit_window
-from . import db
+from . import db, socketio
 
 def get_location():
     event = g.get("active_event")
@@ -140,6 +138,17 @@ def process_exhibitor_scan():
         return jsonify({"result": True, "status": "repeated", "record": record.to_dict(), "notes": record.notes, "message": "Contacto ya guardado", "current_user": current_user.company})
 
     result, record = insert_scan_record(attendee, event.event_id)
+
+    channel = build_records_channel(current_user.company, event.event_id)
+
+    if channel and record:
+        publish_records_event(
+            channel,
+            {
+                "type": "record_created",
+                "record": record.to_dict()
+            }
+        )
     
     return jsonify({"result": result,"status": "new", "record": record, "message": "Contacto almacenado exitosamente", "current_user": current_user.company})
 
@@ -162,7 +171,7 @@ def update_exhibitor_record_notes():
         if channel:
             publish_records_event(
                 channel,
-                {"type": "notes_updated", "e_scan_id": record.e_scan_id}
+                {"type": "record_updated", "record": record.to_dict()}
             )
         return jsonify({'success': True, 'message': 'Notas guardadas exitosamente'})
     else:
@@ -197,7 +206,7 @@ def add_or_update_appointment():
         if channel:
             publish_records_event(
                 channel,
-                {"type": "appointment_updated", "e_scan_id": appointment.e_scan_id}
+                {"type": "record_updated", "record": appointment.exhibitor_scan.to_dict()}
             )
         return jsonify({'message': 'Cita actualizada exitosamente', 'appointment': appointment.to_dict()})
 
@@ -211,13 +220,18 @@ def add_or_update_appointment():
     )
     db.session.add(new_appt)
     db.session.commit()
-    scan_record = ExhibitorScan.query.filter_by(e_scan_id=e_scan_id).first()
+    scan_record = (
+        ExhibitorScan.query
+        .options(joinedload(ExhibitorScan.appointment))
+        .filter_by(e_scan_id=e_scan_id).first()
+    )
+
     if scan_record:
         channel = build_records_channel(scan_record.user.company, scan_record.event_id)
         if channel:
             publish_records_event(
                 channel,
-                {"type": "appointment_updated", "e_scan_id": scan_record.e_scan_id}
+                {"type": "record_updated", "record": scan_record.to_dict()}
             )
     
     return jsonify({"message": "Cita agendada correctamente", 'appointment': new_appt.to_dict()})
@@ -264,37 +278,8 @@ def update_appointment_status():
         if channel:
             publish_records_event(
                 channel,
-                {"type": "appointment_status_updated", "e_scan_id": appointment.e_scan_id}
+                {"type": "record_updated", "record": appointment.exhibitor_scan.to_dict()}
             )
         return jsonify({'message': 'Estado de la cita actualizado'})
     
     return jsonify({'message': 'Cita no encontrada'})
-
-@scan.route("/records-stream")
-@login_required
-@require_user_type("ADMIN", "EXHIBITOR")
-def records_stream():
-    active_event = g.get("active_event")
-    channel = build_records_channel(current_user.company, active_event.event_id if active_event else None)
-    if not channel:
-        return jsonify({"message": "No hay evento activo"}), 400
-
-    client_queue = connect_records_client(channel)
-
-    @stream_with_context
-    def event_stream():
-        try:
-            while True:
-                try:
-                    event_payload = client_queue.get(timeout=20)
-                    yield f"data: {json.dumps(event_payload)}\n\n"
-                except Empty:
-                    yield ": keep-alive\n\n"
-        finally:
-            disconnect_records_client(channel, client_queue)
-
-    return Response(
-        event_stream(),
-        mimetype="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )

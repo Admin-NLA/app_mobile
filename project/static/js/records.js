@@ -5,6 +5,7 @@ let eventName;
 let c_user;
 let canEditRecords = false;
 const notesChangedMap = {};
+const pendingRemoteRecordIds = new Set();
 let recordsStream = null;
 let streamRetryTimeout = null;
 const expandedRecordIds = new Set();
@@ -78,8 +79,8 @@ function renderRecords() {
         btn.textContent = "+";
         expandCell.appendChild(btn);
 
-        fullNameCell.textContent = record.name;
-        emailCell.textContent = record.email || "N/A";
+        fullNameCell.textContent = `${record.scanned_a_last_name} ${record.scanned_a_name}`;
+        emailCell.textContent = record.scanned_a_email || "N/A";
 
         let detailsColSpan = 3;
 
@@ -104,9 +105,9 @@ function renderRecords() {
             <div class="container-fluid d-flex flex-column flex-md-row text-start">
                 <div class="container d-flex flex-column justify-content-center mb-3 fs-5">
                     <span><strong>Día:</strong> ${record.day}</span>
-                    <span><strong>Nombre:</strong> ${record.name}</span>
-                    <span><strong>Teléfono:</strong> ${record.phone || "N/A"}</span>
-                    <span><strong>Empresa:</strong> ${record.company || "N/A"}</span>
+                    <span><strong>Nombre:</strong> ${record.scanned_a_last_name} ${record.scanned_a_name}</span>
+                    <span><strong>Teléfono:</strong> ${record.scanned_a_phone || "N/A"}</span>
+                    <span><strong>Empresa:</strong> ${record.scanned_a_company || "N/A"}</span>
                     <span class="fw-bold mt-3 mb-2">Estado de la Cita:</span>
                     <div id="appointmentStatus${record.e_scan_id}">
                         <span class="fw-bold text-white"></span>
@@ -300,9 +301,18 @@ function renderRecords() {
 
         document.querySelectorAll(`input[name="apptStatus${record.e_scan_id}"]`)
         .forEach(radio => {
-            radio.addEventListener("change", function () {
+            radio.addEventListener("focus", function () {
+                this.dataset.waschecked = this.checked;
+            });
+            radio.addEventListener("change", async function () {
             if (this.checked) {
-                updateAppointmentStatus(this, record);
+                const ok = await updateAppointmentStatus(this, record);
+                if(!ok) {
+                    const radios = document.querySelectorAll(`input[name="apptStatus${record.e_scan_id}"][value="${this.value}"]`);
+                    radios.forEach(r => r.checked = false);
+                    const prev = Array.from(radios).find(r => r.dataset.waschecked === "true");
+                    if (prev) prev.checked = true;
+                }
             }
             });
         });
@@ -368,8 +378,14 @@ async function updateNotes(e_scan_id, notes) {
     if (record) {
         record.notes = updatePayload.notes;
     }
+    notesChangedMap[e_scan_id] = false;
 
     document.getElementById(`saveBtn${e_scan_id}`).disabled = true;
+
+    if (pendingRemoteRecordIds.has(e_scan_id)) {
+        pendingRemoteRecordIds.delete(e_scan_id);
+        loadRecords();
+    }
 }
 
 function loadRecords() {
@@ -387,46 +403,77 @@ function loadRecords() {
             updateEventLabel(data.event);
             records = data.records;
             renderRecords();
-            if (data.event && !recordsStream) {
+            if (data.event && data.event.is_editable_window && !recordsStream) {
                 startRecordsStream();
             }
         });
+}
+
+function insertNewRecord(record) {
+    records.push(record);
+    renderRecords();
+}
+
+function updateSingleRecord(updatedRecord) {
+    const index = records.findIndex(r => r.e_scan_id === updatedRecord.e_scan_id);
+
+    if(index === -1) return;
+
+    records[index] = updatedRecord;
+    renderRecords();
 }
 
 function hasPendingLocalChanges() {
     return Object.values(notesChangedMap).some(Boolean);
 }
 
+function hasPendingNotesForRecord(eScanId) {
+    return Boolean(notesChangedMap[eScanId]);
+}
+
 function startRecordsStream() {
-    if (recordsStream) return;
+    if(recordsStream) return;
 
-    recordsStream = new EventSource("/records-stream");
-    recordsStream.onopen = () => {
-        if (hasPendingLocalChanges()) {
+    recordsStream = io({
+        transports: ["websocket"]
+    });
+
+    recordsStream.on("connect", () => {
+        if (!hasPendingLocalChanges()) {
+            loadRecords();
+        }
+    });
+
+    recordsStream.on("records_update", (payload) => {
+        if(!payload) return;
+
+        if(payload.type === "record_created") {
+            insertNewRecord(payload.record);
             return;
         }
-        loadRecords();
-    };
 
-    recordsStream.onmessage = () => {
-        if (hasPendingLocalChanges()) {
-            return;
-        }
-        loadRecords();
-    };
+        if (payload.type === "record_updated") {
+            const record = payload.record;
 
-    recordsStream.onerror = () => {
-        if (recordsStream) {
-            recordsStream.close();
-            recordsStream = null;
+            if (hasPendingNotesForRecord(record.e_scan_id)) {
+                pendingRemoteRecordIds.add(record.e_scan_id);
+                return;
+            }
+
+            updateSingleRecord(record);
         }
-        if (!streamRetryTimeout) {
+    });
+
+    recordsStream.on("disconnect", () => {
+        recordsStream = null;
+
+        if (!streamRetryTimeout) { 
             streamRetryTimeout = setTimeout(() => {
                 streamRetryTimeout = null;
                 startRecordsStream();
             }, 3000);
         }
-    };
+    });
 }
 
 window.addEventListener("beforeunload", () => {
@@ -507,13 +554,13 @@ UID:${record.appointment.appointment_id}-cmc-app
 DTSTAMP:${dateStr}T${hourStr}
 DTSTART:${dateStr}T${hourStr}
 DTEND:${dateStr}T${hourStr}
-SUMMARY:Cita ${c_user} con ${record.name}
+SUMMARY:Cita ${c_user} con ${record.scanned_a_last_name} ${record.scanned_a_name}
 DESCRIPTION:${escapeICSText(record.appointment.description)}
 LOCATION:${escapeICSText(record.appointment.location)}
 END:VEVENT
 END:VCALENDAR`;
 
-    const fileName = `cita_${record.name}_con_${c_user}.ics`;
+    const fileName = `cita_${record.scanned_a_last_name}_${record.scanned_a_name}_con_${c_user}.ics`;
     const blob = new Blob([icsContent], { type: "text/calendar" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -539,7 +586,7 @@ async function updateAppointmentStatus(radio, record) {
             icon: "info"
         });
         radio.checked = false;
-        return;
+        return false;
     }
     if (!record.appointment) {
         await Swal.fire({
@@ -549,7 +596,7 @@ async function updateAppointmentStatus(radio, record) {
             icon: "warning"
         });
         radio.checked = false;
-        return;
+        return false;
     }
 
     if(!hasAppointmentTimeReached(record.appointment)) {
@@ -560,7 +607,7 @@ async function updateAppointmentStatus(radio, record) {
             icon: "warning"
         });
         radio.checked = false;
-        return;
+        return false;
     }
 
     const isCompleted = radio.value === "completed";
@@ -586,7 +633,7 @@ async function updateAppointmentStatus(radio, record) {
             icon: "error"
         });
         radio.checked = false;
-        return;
+        return false;
     }
 
     record.appointment.status = isCompleted;
@@ -603,6 +650,7 @@ async function updateAppointmentStatus(radio, record) {
         icon: "success"
     });
 
+    return true;
 }
 
 function hasAppointmentTimeReached(appointment) {

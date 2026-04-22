@@ -1,6 +1,7 @@
 from threading import Lock
 from queue import Queue
 from typing import Optional
+
 pending_scans = {}
 scan_results = {}
 records_clients = {}
@@ -26,9 +27,7 @@ def disconnect_records_client(channel: str, client_queue: Queue):
             clients.remove(client_queue)
         if not clients and channel in records_clients:
             records_clients.pop(channel, None)
-
+            
 def publish_records_event(channel: str, event_payload: dict):
-    with lock:
-        clients = list(records_clients.get(channel, []))
-    for client_queue in clients:
-        client_queue.put(event_payload)
+    from . import socketio
+    socketio.emit("records_update", event_payload, room=channel)
