@@ -146,7 +146,7 @@ def process_exhibitor_scan():
             channel,
             {
                 "type": "record_created",
-                "record": record.to_dict()
+                "record": record
             }
         )
     
@@ -179,7 +179,7 @@ def update_exhibitor_record_notes():
     
 # A PARTIR DE AQUÍ ES DE LAS CITAS
     
-@scan.route("/add_or_update_appointment", methods=["POST"])
+@scan.route("/add-or-update-appointment", methods=["POST"])
 @login_required
 @require_user_type("ADMIN", "EXHIBITOR")
 def add_or_update_appointment():
@@ -202,7 +202,7 @@ def add_or_update_appointment():
         appointment.description = description
         appointment.status = None
         db.session.commit()
-        channel = build_records_channel(appointment.exhibitor_scan.user.company, appointment.exhibitor_scan.event_id)
+        channel = build_records_channel(current_user.company, appointment.exhibitor_scan.event_id)
         if channel:
             publish_records_event(
                 channel,
@@ -227,7 +227,7 @@ def add_or_update_appointment():
     )
 
     if scan_record:
-        channel = build_records_channel(scan_record.user.company, scan_record.event_id)
+        channel = build_records_channel(current_user.company, scan_record.event_id)
         if channel:
             publish_records_event(
                 channel,
@@ -274,7 +274,7 @@ def update_appointment_status():
     if appointment:
         appointment.status = status
         db.session.commit()
-        channel = build_records_channel(appointment.exhibitor_scan.user.company, appointment.exhibitor_scan.event_id)
+        channel = build_records_channel(current_user.company, appointment.exhibitor_scan.event_id)
         if channel:
             publish_records_event(
                 channel,

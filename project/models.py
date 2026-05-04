@@ -37,18 +37,18 @@ class Event(db.Model):
 
     event_id = db.Column(db.Integer, primary_key=True)
     location = db.Column(db.String(50), nullable=False)
-    year = db.Column(db.SmallInteger)
+    year = db.Column(db.SmallInteger, nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
 
     e_scans_ev = db.relationship('ExhibitorScan', back_populates = 'event', cascade = 'all, delete-orphan')
-    stats_ev = db.relationship('Stats', back_populates = 'event', cascade = 'all, delete-orphan')
+    stats_ev = db.relationship('Stats', back_populates = 'event', uselist=False, cascade = 'all, delete-orphan')
 
 class Stats(db.Model):
     __tablename__ = "statistics"
     
     stats_id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('events.event_id'), nullable=False)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.event_id'), unique=True, nullable=False)
     stats = db.Column(JSONB)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

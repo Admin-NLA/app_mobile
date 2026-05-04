@@ -503,7 +503,7 @@ async function showScheduleAlert(isNewContact, record) {
             description: description
         };
 
-        const response = await fetch("/add_or_update_appointment", {
+        const response = await fetch("/add-or-update-appointment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(schedulePayload)

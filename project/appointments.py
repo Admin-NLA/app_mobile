@@ -18,13 +18,13 @@ def is_appointment_expired(appointment:Appointment):
 
     return now >= appt_deadline
 
-def setAppointmentStatus(appointment:Appointment):
+def set_appointment_status(appointment:Appointment):
     status = ""
     if appointment.status:
         status = "Cita Completada"
     else:
         if has_appointment_time_reached(appointment):
-            if is_appointment_expired(appointment) or appointment.status == False:
+            if appointment.status == False or is_appointment_expired(appointment):
                 status = "Cita no Completada"
             else:
                 status = "Cita en Curso"

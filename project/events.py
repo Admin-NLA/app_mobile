@@ -18,10 +18,10 @@ def get_active_event():
         return current
     return Event.query.filter(Event.start_date >= d).order_by(Event.start_date.asc()).first()
 
-def is_exhibitor_edit_window(event, today=None):
+def is_exhibitor_edit_window(event):
     if not event:
         return False
-    current_day = today or date.today()
+    current_day = date.today()
     day_number = (current_day - event.start_date).days + 1
     return day_number in (3, 4)
 

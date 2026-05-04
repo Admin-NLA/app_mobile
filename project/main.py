@@ -6,7 +6,7 @@ from .models import User, Stats, ExhibitorScan, Event, Appointment
 from .auth import require_user_type
 from .events import get_active_event, get_active_event_stats_preview, is_exhibitor_edit_window
 from .excel_writer import create_records_excel_file
-from .appointments import setAppointmentStatus
+from .appointments import set_appointment_status
 
 main = Blueprint('main', __name__)
 
@@ -188,8 +188,8 @@ def export_exhibitor_records():
             "EMPRESA": scan.scanned_a_company,
             "NOTAS": scan.notes,
             "CITA": "✓" if scan.appointment else "",
-            "FECHA CITA": scan.appointment.date,
-            "ESTADO DE LA CITA": setAppointmentStatus(scan.appointment) if scan.appointment else "---",
+            "FECHA CITA": scan.appointment.date if scan.appointment else "",
+            "ESTADO DE LA CITA": set_appointment_status(scan.appointment) if scan.appointment else "---",
             "REAGENDADA": "---" if not scan.appointment else "✓" if (scan.appointment.created_at != scan.appointment.updated_at) else ""
         }
         for scan in scan_records

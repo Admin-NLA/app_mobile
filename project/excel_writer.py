@@ -1,6 +1,7 @@
 import pandas as pd
 import io
 from xlsxwriter.worksheet import Worksheet
+from xlsxwriter.workbook import Workbook
 
 def create_records_excel_file(data:list, edition:str):
     df = pd.DataFrame(data)
@@ -9,7 +10,7 @@ def create_records_excel_file(data:list, edition:str):
         startrow = 3
 
         df.to_excel(writer, header=False, index=False, sheet_name='Contactos', startrow=startrow+1)
-        workbook = writer.book
+        workbook:Workbook = writer.book
         worksheet:Worksheet = writer.sheets['Contactos']
         max_row, max_col = df.shape
 

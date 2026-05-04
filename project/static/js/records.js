@@ -247,7 +247,7 @@ function renderRecords() {
                     description: description
                 };
 
-                const response = await fetch("/add_or_update_appointment", {
+                const response = await fetch("/add-or-update-appointment", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(schedulePayload)
@@ -691,9 +691,8 @@ function changeApptDisplayedStatus(appointment) {
         statusText = "Cita Completada";
         statusContainerClass = "d-inline-block bg-success border border-4 border-secondary rounded p-2";
     } else {
-        statusCheckState = false;
         if (hasAppointmentTimeReached(appointment)) {
-            if (isAppointmentExpired(appointment) || appointment.status === false) {
+            if (appointment.status === false || isAppointmentExpired(appointment)) {
                 statusText = "Cita no Completada";
                 statusContainerClass = "d-inline-block bg-danger border border-4 border-secondary rounded p-2";
                 noCompletedRadio.checked = true;

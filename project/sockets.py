@@ -1,7 +1,7 @@
 from flask_socketio import join_room
 from flask_login import current_user
 from flask import g
-from .import socketio
+from . import socketio
 from .state import build_records_channel
 from .events import set_active_event_for_request
 
@@ -14,10 +14,6 @@ def handle_connect():
         current_user.company,
         active_event.event_id if active_event else None
     )
-
-    print("USER:", current_user.company)
-    print("EVENT:", active_event.event_id if active_event else None)
-    print("CHANNEL", channel)
 
     if channel:
         join_room(channel)
