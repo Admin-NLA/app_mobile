@@ -3,9 +3,11 @@ import isEqual from 'https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/isEqual.js';
 const generalTable = document.getElementById("generalTable");
 const generalTable1 = document.getElementById("generalTable1");
 const attendeesTable = document.getElementById("attendeesTable");
-const exhibitorsTable = document.getElementById("exhibitorsTable")
+const exhibitorsTable = document.getElementById("exhibitorsTable");
+const speakersTable = document.getElementById("speakersTable");
 const dailyTable = document.getElementById("dailyTable");
-const exhibitorGeneralTable = document.getElementById("exhibitorGeneralTable")
+const exhibitorGeneralTable = document.getElementById("exhibitorGeneralTable");
+const speakersGeneralTable = document.getElementById("speakersGeneralTable");
 const exhibitorScansTable = document.getElementById("exhibitorScansTable");
 
 const searchInput = document.getElementById("searchInput");
@@ -16,7 +18,8 @@ const tableMap = {
     attendeeStats: [attendeesTable],
     dailyStats: [dailyTable],
     exhibitorStats: [exhibitorGeneralTable, exhibitorsTable],
-    exhibitorScansStats: [exhibitorScansTable]
+    exhibitorScansStats: [exhibitorScansTable],
+    speakerStats: [speakersGeneralTable, speakersTable]
 };
 
 let lastStats = {};
@@ -32,7 +35,7 @@ document.getElementById("selector").addEventListener('change', function () {
             tableMap[this.value][i].style.display = 'table';
         }
 
-        if (this.value === "attendeeStats" || this.value === "exhibitorStats") {
+        if (["attendeeStats", "exhibitorStats", "speakerStats"].includes(this.value)) {
             searchInput.disabled = false;
         } else {
             searchInput.disabled = true;
@@ -43,7 +46,7 @@ document.getElementById("selector").addEventListener('change', function () {
 searchInput.addEventListener('keyup', function () {
     const filter = this.value.toLowerCase();
 
-    const searchableTables = [attendeesTable, exhibitorsTable].filter(tbl => tbl.style.display !== 'none');
+    const searchableTables = [attendeesTable, exhibitorsTable, speakersTable].filter(tbl => tbl.style.display !== 'none');
 
     searchableTables.forEach(tbl => {
         const rows = tbl.querySelectorAll('tbody tr');
@@ -82,6 +85,7 @@ function updateData() {
                 if (!isEqual(stats, lastStats)) {
                     var attendees = stats.attendees_scan_stats;
                     var exhibitors = stats.exhibitor_scan_stats;
+                    var speakers = stats.speakers_scan_stats;
 
                     attendeesTable.querySelector("tbody").innerHTML = "";
                     for (let nAttendee = 0; nAttendee < attendees.length; nAttendee++) {
@@ -138,42 +142,80 @@ function updateData() {
 
                     }
 
+                    const spGeneralRow = speakersGeneralTable.tBodies[0].rows[0];
+                    spGeneralRow.cells[0].textContent = stats.total_speakers;
+                    spGeneralRow.cells[1].textContent = stats.daily_speaker_stats.day_1.actual;
+                    spGeneralRow.cells[2].textContent = stats.daily_speaker_stats.day_2.actual;
+                    spGeneralRow.cells[3].textContent = stats.daily_speaker_stats.day_3.actual;
+                    spGeneralRow.cells[4].textContent = stats.daily_speaker_stats.day_4.actual;
+
+                    speakersTable.querySelector("tbody").innerHTML = "";
+                    for (let nSpeaker = 0; nSpeaker < speakers.length; nSpeaker++) {
+                        const newRow = speakersTable.tBodies[0].insertRow();
+                        const idCell = newRow.insertCell();
+                        const lastnameCell = newRow.insertCell();
+                        const nameCell = newRow.insertCell();
+                        const companyCell = newRow.insertCell();
+                        const typeCell = newRow.insertCell();
+                        const day1Cell = newRow.insertCell();
+                        const day2Cell = newRow.insertCell();
+                        const day3Cell = newRow.insertCell();
+                        const day4Cell = newRow.insertCell();
+
+                        idCell.textContent = speakers[nSpeaker].ID;
+                        lastnameCell.textContent = speakers[nSpeaker]["Apellido(s)"];
+                        nameCell.textContent = speakers[nSpeaker]["Nombre(s)"];
+                        companyCell.textContent = speakers[nSpeaker].Empresa;
+                        typeCell.textContent = speakers[nSpeaker].Tipo;
+                        day1Cell.textContent = speakers[nSpeaker]["Día 1"];
+                        day2Cell.textContent = speakers[nSpeaker]["Día 2"];
+                        day3Cell.textContent = speakers[nSpeaker]["Día 3"];
+                        day4Cell.textContent = speakers[nSpeaker]["Día 4"];
+
+                    }
+
                     const generalRow = generalTable.tBodies[0].rows[0];
                     generalRow.cells[0].textContent = stats.total_attendees;
-                    generalRow.cells[1].textContent = stats.type_stats.general;
+                    generalRow.cells[1].textContent = stats.type_stats.combo;
                     generalRow.cells[2].textContent = stats.type_stats.sessions;
                     generalRow.cells[3].textContent = stats.type_stats.courses;
-                    generalRow.cells[4].textContent = stats.scholarship_stats.total_scholarship_holders;
-                    generalRow.cells[5].textContent = stats.scholarship_stats.general_scholarship_holders;
-                    generalRow.cells[6].textContent = stats.scholarship_stats.sessions_scholarship_holders;
-                    generalRow.cells[7].textContent = stats.scholarship_stats.courses_scholarship_holders;
+                    generalRow.cells[4].textContent = stats.type_stats.general;
+                    generalRow.cells[5].textContent = stats.scholarship_stats.total_scholarship_holders;
+                    generalRow.cells[6].textContent = stats.scholarship_stats.combo_scholarship_holders;
+                    generalRow.cells[7].textContent = stats.scholarship_stats.sessions_scholarship_holders;
+                    generalRow.cells[8].textContent = stats.scholarship_stats.courses_scholarship_holders;
+                    generalRow.cells[9].textContent = stats.scholarship_stats.general_scholarship_holders;
 
                     const generalRow1 = generalTable1.tBodies[0].rows[0];
                     generalRow1.cells[0].textContent = stats.total_scanned_attendees;
                     generalRow1.cells[1].textContent = stats.scanned_scholarship_holders.total;
-                    generalRow1.cells[2].textContent = stats.scanned_attendees_by_type.general;
+                    generalRow1.cells[2].textContent = stats.scanned_attendees_by_type.combo;
                     generalRow1.cells[3].textContent = stats.scanned_attendees_by_type.sessions;
                     generalRow1.cells[4].textContent = stats.scanned_attendees_by_type.courses;
-                    generalRow1.cells[5].textContent = stats.scanned_scholarship_holders.general;
-                    generalRow1.cells[6].textContent = stats.scanned_scholarship_holders.sessions;
-                    generalRow1.cells[7].textContent = stats.scanned_scholarship_holders.courses;
+                    generalRow1.cells[5].textContent = stats.scanned_attendees_by_type.general;
+                    generalRow1.cells[6].textContent = stats.scanned_scholarship_holders.combo;
+                    generalRow1.cells[7].textContent = stats.scanned_scholarship_holders.sessions;
+                    generalRow1.cells[8].textContent = stats.scanned_scholarship_holders.courses;
+                    generalRow1.cells[9].textContent = stats.scanned_scholarship_holders.general;
 
                     dailyTable.querySelector("tbody").innerHTML = "";
 
                     for (let day = 1; day <= 4; day++) {
                         const newRow = dailyTable.tBodies[0].insertRow();
                         const dayCell = newRow.insertCell();
-                        const generalCell = newRow.insertCell();
+                        const comboCell = newRow.insertCell();
                         const coursesCell = newRow.insertCell();
                         const sessionsCell = newRow.insertCell();
+                        const generalCell = newRow.insertCell();
                         const eTotalCell = newRow.insertCell();
                         const totalCell = newRow.insertCell();
                         const scholarshipsCell = newRow.insertCell();
 
                         dayCell.textContent = `Día ${day}`;
-                        generalCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].general;
+                        comboCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].combo;
                         coursesCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].courses;
                         sessionsCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].sessions;
+                        generalCell.textContent = stats.daily_attendee_type_scans[`day_${day}`].general;
                         eTotalCell.textContent = stats.daily_stats[`day_${day}`].expected;
                         totalCell.textContent = stats.daily_stats[`day_${day}`].actual.length;
                         scholarshipsCell.textContent = stats.daily_scanned_sh[`day_${day}`];

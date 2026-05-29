@@ -27,15 +27,13 @@
                     <div class="mb-3">
                         
                         <label for="companySelector" class="form-label">Empresa</label>
-                        <input type="text" name="companySelector" id="companySelector" class="form-control" required>
-                        <!--
+                        <!--<input type="text" name="companySelector" id="companySelector" class="form-control" required> -->
                         <select class="form-select form-select-sm" id="companySelector">
                             <option value="CMC">CMC</option>
                             {% for company in companies %}
                                 <option value="{{ company }}">{{ company }}</option>
                             {% endfor %}
                         </select>
-                        -->
                     </div>
 
                     <div class="mb-3">

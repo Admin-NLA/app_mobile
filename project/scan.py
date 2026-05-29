@@ -8,7 +8,7 @@ from .state import pending_scans, scan_results, lock, build_records_channel, pub
 
 from .auth import service_required, require_user_type
 from .models import ExhibitorScan, Appointment
-from .events import is_exhibitor_edit_window
+from .events import is_exhibitor_edit_window, event_tz
 from . import db, socketio
 
 def get_location():
@@ -53,10 +53,12 @@ def recieve_scan():
     data = request.get_json()
 
     scan_id = str(uuid4())
+    event = g.get("active_event")
+    scanned_at = datetime.now(event_tz(event)).isoformat(timespec='seconds')
     with lock:
         pending_scans[scan_id] = {
             "vcard": data.get('qr_data', ''),
-            "date": data.get("date", datetime.now().date().isoformat()),
+            "date": scanned_at,
             "status": "pending"
         }
     return jsonify({"scan_id": scan_id})
@@ -114,7 +116,7 @@ def process_exhibitor_scan():
     if event is None:
         return jsonify({"result": False, "message": "No hay evento activo para registrar el escaneo"}), 400
 
-    scan_date = datetime.now().date()
+    scan_date = datetime.now(tz=event_tz(event)).date()
     day = (scan_date - event.start_date).days + 1
 
     if day not in (3,4):

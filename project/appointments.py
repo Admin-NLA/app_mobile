@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
 from .models import Appointment
+from events import event_tz
+from flask import g
 
 def has_appointment_time_reached(appointment:Appointment):
-    now = datetime.now()
+    now = datetime.now(tz=event_tz(g.get("active_event")))
     year, month, day = map(int, appointment.date.split("-"))
     hours, minutes = map(int, appointment.hour.split(":"))
     appt_date = datetime(year,month,day,hours,minutes)
@@ -10,7 +12,7 @@ def has_appointment_time_reached(appointment:Appointment):
     return now >= appt_date
 
 def is_appointment_expired(appointment:Appointment):
-    now = datetime.now()
+    now = datetime.now(tz=event_tz(g.get("active_event")))
     year, month, day = map(int, appointment.date.split("-"))
     hours, minutes = map(int, appointment.hour.split(":"))
     appt_date = datetime(year,month,day,hours,minutes)

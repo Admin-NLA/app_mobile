@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, abort, g
 from flask_login import login_user, logout_user, login_required, current_user
 from functools import wraps
 
-from .models import User
+from .models import User, Stats
 from . import db
 
 auth = Blueprint('auth', __name__)
@@ -41,7 +41,12 @@ def login_post():
 @login_required
 @require_user_type("ADMIN")
 def signup():
-    return render_template("signup.html")
+    active_event = g.active_event
+    stats = Stats.query.filter_by(event_id = active_event.event_id)
+    companies = []
+    if stats:
+        companies = stats['exhibitor_companies']
+    return render_template("signup.html", companies = companies)
 
 @auth.route('/signup', methods=['POST'])
 @login_required

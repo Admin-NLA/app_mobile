@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from flask import g
 from .models import Event, Stats, Appointment, ExhibitorScan
 
@@ -6,6 +7,16 @@ _active_event_cache = (None, None)
 
 _active_event_stats_preview_cache = (None, None, None, None)
 _STATS_PREVIEW_TTL_MINUTES = 20
+
+EVENT_ZONES = {
+    'Colombia': "America/Bogota",
+    'México': "America/Monterrey",
+    'Chile': "America/Santiago",
+}
+
+def event_tz(event=None):
+    zone_name = EVENT_ZONES.get(event.location if event else "", "UTC")
+    return ZoneInfo(zone_name)
 
 def get_active_event():
     d = date.today()
@@ -21,7 +32,7 @@ def get_active_event():
 def is_exhibitor_edit_window(event):
     if not event:
         return False
-    current_day = date.today()
+    current_day = datetime.now(tz=event_tz(event)).date()
     day_number = (current_day - event.start_date).days + 1
     return day_number in (3, 4)
 
@@ -48,18 +59,17 @@ def get_active_event_stats_preview():
     if not active_event:
         return None
 
-    today =  date.today()
-    day_number = (today - active_event.start_date).days + 1
+    today =  datetime.now(event_tz(active_event))
+    day_number = (today.date() - active_event.start_date).days + 1
     event_days = (active_event.end_date - active_event.start_date).days + 1
 
     if day_number < 1 or day_number > event_days:
         return None
 
     day_key = f"day_{day_number}"
-    now = datetime.now()
 
     cached_event_id, cached_day_key, cached_expires_at, cached_payload = _active_event_stats_preview_cache
-    if (cached_event_id == active_event.event_id and cached_day_key == day_key and cached_expires_at is not None and now < cached_expires_at):
+    if (cached_event_id == active_event.event_id and cached_day_key == day_key and cached_expires_at is not None and today < cached_expires_at):
         return cached_payload
     
     stats_row = (
@@ -82,7 +92,8 @@ def get_active_event_stats_preview():
         type_stats = daily_types.get(day_key, {})
 
         daily_exhibitor_stats = stats.get("daily_exhibitor_stats", {})
-        today_str = today.isoformat()
+        daily_speaker_stats = stats.get("daily_speaker_stats", {})
+        today_str = today.date().isoformat()
         appointments_scheduled = (
             Appointment.query.join(ExhibitorScan)
             .filter(
@@ -105,20 +116,22 @@ def get_active_event_stats_preview():
             "event_id": active_event.event_id,
             "day": day_number,
             "total": total,
-            "general": type_stats.get("general", 0),
+            "combo": type_stats.get("combo", 0),
             "courses": type_stats.get("courses", 0),
             "sessions": type_stats.get("sessions", 0),
+            "general": type_stats.get("general", 0),
             "scholarships": daily_scanned_sh.get(day_key, 0),
             "exhibitors": daily_exhibitor_stats.get(day_key,{}).get("actual", "---"),
             "appointments_scheduled": appointments_scheduled,
             "appointments_completed": appointments_completed,
+            "speakers": daily_speaker_stats.get(day_key, {}).get("actual", 0),
             "updated_at": stats_row.updated_at.date().isoformat() if stats_row.updated_at else None,
         }
 
     _active_event_stats_preview_cache = (
         active_event.event_id,
         day_key,
-        now + timedelta(minutes=_STATS_PREVIEW_TTL_MINUTES),
+        today + timedelta(minutes=_STATS_PREVIEW_TTL_MINUTES),
         payload
     )
 
