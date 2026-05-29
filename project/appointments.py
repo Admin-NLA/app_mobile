@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from .models import Appointment
-from events import event_tz
+from .events import event_tz
 from flask import g
 
 def has_appointment_time_reached(appointment:Appointment):
