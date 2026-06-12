@@ -42,10 +42,10 @@ def login_post():
 @require_user_type("ADMIN")
 def signup():
     active_event = g.active_event
-    stats = Stats.query.filter_by(event_id = active_event.event_id)
+    stats = Stats.query.filter_by(event_id = active_event.event_id).first()
     companies = []
-    if stats:
-        companies = stats['exhibitor_companies']
+    if stats and stats.stats:
+        companies = stats.stats.get('exhibitor_companies', [])
     return render_template("signup.html", companies = companies)
 
 @auth.route('/signup', methods=['POST'])
