@@ -4,18 +4,20 @@ from .events import event_tz
 from flask import g
 
 def has_appointment_time_reached(appointment:Appointment):
-    now = datetime.now(tz=event_tz(g.get("active_event")))
+    tz = event_tz(g.get("active_event"))
+    now = datetime.now(tz=tz)
     year, month, day = map(int, appointment.date.split("-"))
     hours, minutes = map(int, appointment.hour.split(":"))
-    appt_date = datetime(year,month,day,hours,minutes)
+    appt_date = datetime(year,month,day,hours,minutes, tzinfo=tz)
 
     return now >= appt_date
 
 def is_appointment_expired(appointment:Appointment):
-    now = datetime.now(tz=event_tz(g.get("active_event")))
+    tz = event_tz(g.get("active_event"))
+    now = datetime.now(tz=tz)
     year, month, day = map(int, appointment.date.split("-"))
     hours, minutes = map(int, appointment.hour.split(":"))
-    appt_date = datetime(year,month,day,hours,minutes)
+    appt_date = datetime(year,month,day,hours,minutes,tzinfo=tz)
     appt_deadline = appt_date + timedelta(hours=2)
 
     return now >= appt_deadline

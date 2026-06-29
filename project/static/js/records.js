@@ -287,7 +287,7 @@ function renderRecords() {
 
         if (!record.appointment) {
             statusText = "Cita no Agendada";
-            statusTextClass = "text-muted";
+            statusTextClass = "d-inline-block bg-secondary text-muted border border-4 border-dark rounded p-2";
         } else {
             apptCompletedRadio.disabled = false;
             apptNoCompletedRadio.disabled = false;
@@ -535,7 +535,7 @@ async function exportRecords() {
             Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text:  "Descarga fallida" + err.message,
+                text:  "Descarga fallida " + err.message,
                 icon: "error"
             });
         });
@@ -672,7 +672,7 @@ function isAppointmentExpired(appointment) {
     const [hours, minutes] = appointment.hour.split(":").map(Number);
     apptDate.setHours(hours,minutes,0,0);
 
-    const apptDeadline = new Date(apptDate.getTime() + 2 * 60 * 60 * 10000);
+    const apptDeadline = new Date(apptDate.getTime() + 2 * 60 * 60 * 1000);
 
     return now >= apptDeadline;
 }
