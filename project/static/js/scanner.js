@@ -4,64 +4,64 @@ const zoomSlider = document.getElementById("zoomControl");
 let track;
 let c_user;
 
-const config = {fps: 30,qrbox: document.getElementById("camera-container").offsetWidth};
+const config = { fps: 30, qrbox: document.getElementById("camera-container").offsetWidth };
 let isScanning = false;
 let pollingInterval = null;
 
 function extractLastNameAndName(text) {
     const parts = text.slice(2).split(";");
     return [
-      parts[0]?.trim() || "",
-      parts[1]?.trim() || ""
+        parts[0]?.trim() || "",
+        parts[1]?.trim() || ""
     ];
 }
 
 function processExhibitorScanInfo(data) {
     const attendee = {
-      scanned_a_last_name: "",
-      scanned_a_name: "",
-      scanned_a_phone: "",
-      scanned_a_email: "",
-      scanned_a_company: "",
-      notes: ""
+        scanned_a_last_name: "",
+        scanned_a_name: "",
+        scanned_a_phone: "",
+        scanned_a_email: "",
+        scanned_a_company: "",
+        notes: ""
     };
-    
-    const lines = data.split("\r\n");
 
-    if(lines[0] != "BEGIN:VCARD") return null;
-  
+    const lines = data.split(/\r\n|\n|\r/); //ajuste original: const lines = data.split("\r\n");
+
+    if (lines[0].trim() !== "BEGIN:VCARD") return null; //Ajuste de limpieza
+
     for (let line of lines) {
-      line = line.trim();
-  
-      if (line.startsWith("N:")) {
-        const [lastName, name] = extractLastNameAndName(line);
-        attendee.scanned_a_last_name = lastName;
-        attendee.scanned_a_name = name;
-  
-      } else if (line.startsWith("TEL;TYPE=CELL:")) {
-        attendee.scanned_a_phone = line.replace("TEL;TYPE=CELL:", "").trim();
-  
-      } else if (line.startsWith("EMAIL;TYPE=INTERNET:")) {
-        attendee.scanned_a_email = line.replace("EMAIL;TYPE=INTERNET:", "").trim();
-  
-      } else if (line.startsWith("ORG:")) {
-        attendee.scanned_a_company = line.replace("ORG:", "").trim();
-      }
+        line = line.trim();
+
+        if (line.startsWith("N:")) {
+            const [lastName, name] = extractLastNameAndName(line);
+            attendee.scanned_a_last_name = lastName;
+            attendee.scanned_a_name = name;
+
+        } else if (line.startsWith("TEL;TYPE=CELL:")) {
+            attendee.scanned_a_phone = line.replace("TEL;TYPE=CELL:", "").trim();
+
+        } else if (line.startsWith("EMAIL;TYPE=INTERNET:")) {
+            attendee.scanned_a_email = line.replace("EMAIL;TYPE=INTERNET:", "").trim();
+
+        } else if (line.startsWith("ORG:")) {
+            attendee.scanned_a_company = line.replace("ORG:", "").trim();
+        }
     }
-  
+
     return attendee;
 }
 
 function escapeHtml(str = '') {
-  const map = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;'
-  };
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
 
-  return String(str).replace(/[&<>"']/g, match => map[match]);
+    return String(str).replace(/[&<>"']/g, match => map[match]);
 }
 
 async function onQrScanned(decodedText, decodedResult) {
@@ -70,26 +70,26 @@ async function onQrScanned(decodedText, decodedResult) {
     await track.stop();
     await scanner.stop();
 
-    if(pollingInterval) {
+    if (pollingInterval) {
         clearInterval(pollingInterval);
     }
     let response;
     const endpoint = window.location.pathname;
-    
+
     if (endpoint === "/scanner") {
         response = await fetch("/scan", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({qr_data: decodedText})
-        }); 
+            body: JSON.stringify({ qr_data: decodedText })
+        });
         if (!response.ok) {
             await Swal.fire({
-                    theme: "dark",
-                    title: "<strong>ERROR</strong>",
-                    text: "Error al enviar escaneo",
-                    icon: "error",
+                theme: "dark",
+                title: "<strong>ERROR</strong>",
+                text: "Error al enviar escaneo",
+                icon: "error",
             });
             isScanning = true;
             zoomSlider.disabled = false;
@@ -203,7 +203,7 @@ async function checkScanStatus(scanId) {
 
     clearInterval(pollingInterval);
 
-    if(!data.result){
+    if (!data.result) {
         await Swal.fire({
             theme: "dark",
             title: "<strong>ERROR</strong>",
@@ -211,7 +211,7 @@ async function checkScanStatus(scanId) {
             icon: "error",
         });
     } else {
-        if(data.status === "repeated"){
+        if (data.status === "repeated") {
             await Swal.fire({
                 theme: "dark",
                 title: "<strong>REPETIDO</strong>",
@@ -229,7 +229,7 @@ async function checkScanStatus(scanId) {
     }
     isScanning = true;
     zoomSlider.disabled = false;
-    await scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
+    await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
     await restartScanner();
 }
 
@@ -246,9 +246,9 @@ document.getElementById("start-scan").onclick = async () => {
         const devices = await Html5Qrcode.getCameras();
         if (devices && devices.length) {
 
-            await scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
+            await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
 
-            const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}});
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             track = stream.getVideoTracks()[0];
 
             const capabilities = track.getCapabilities();
@@ -257,8 +257,8 @@ document.getElementById("start-scan").onclick = async () => {
                 zoomSlider.min = capabilities.zoom.min;
                 zoomSlider.max = capabilities.zoom.max;
                 zoomSlider.step = capabilities.zoom.step || 0.2;
-                
-                track.applyConstraints({advanced: [{zoom: parseFloat(zoomSlider.value)}]})
+
+                track.applyConstraints({ advanced: [{ zoom: parseFloat(zoomSlider.value) }] })
                     .catch(err => Swal.fire({
                         theme: "dark",
                         title: "<strong>ERROR</strong>",
@@ -267,15 +267,15 @@ document.getElementById("start-scan").onclick = async () => {
                     }));
 
                 zoomSlider.addEventListener("input", () => {
-                    if(track && track.readyState === "live") {
-                        track.applyConstraints({advanced: [{zoom: parseFloat(zoomSlider.value)}]})
+                    if (track && track.readyState === "live") {
+                        track.applyConstraints({ advanced: [{ zoom: parseFloat(zoomSlider.value) }] })
                             .catch(err => Swal.fire({
                                 theme: "dark",
                                 title: "<strong>ERROR</strong>",
                                 text: "Error de zoom: " + err,
                                 icon: "error",
                             }));
-                        }
+                    }
                 });
             } else {
                 document.getElementById("zoomControl").style.display = "none";
@@ -291,11 +291,11 @@ document.getElementById("start-scan").onclick = async () => {
         });
         message.style.color = "#cc0000";
         message.textContent = "Ocurrió un error";
-        isScanning = false; 
-        if(track) {
+        isScanning = false;
+        if (track) {
             await track.stop();
         }
-        if(scanner) {
+        if (scanner) {
             await scanner.stop();
         }
     }
@@ -322,7 +322,7 @@ async function restartScanner() {
         zoomSlider.max = capabilities.zoom.max;
         zoomSlider.step = capabilities.zoom.step || 0.2;
 
-        track.applyConstraints({advanced: [{zoom: parseFloat(zoomSlider.value)}]})
+        track.applyConstraints({ advanced: [{ zoom: parseFloat(zoomSlider.value) }] })
             .catch(err => Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
@@ -348,8 +348,8 @@ async function restartScanner() {
 
 
 document.addEventListener('visibilitychange', async () => {
-    if(document.visibilityState !== 'visible') {
-        if(isScanning) {
+    if (document.visibilityState !== 'visible') {
+        if (isScanning) {
             await track.stop();
             await scanner.stop();
             zoomSlider.disabled = true;
@@ -357,13 +357,13 @@ document.addEventListener('visibilitychange', async () => {
             message.textContent = "Escáner detenido";
         }
     } else {
-        if(isScanning) {
-            await scanner.start({facingMode: {exact: "environment"}}, config, onQrScanned);
-            if(track) {
+        if (isScanning) {
+            await scanner.start({ facingMode: { exact: "environment" } }, config, onQrScanned);
+            if (track) {
                 await restartScanner();
             }
         }
-        
+
     }
 });
 
@@ -385,7 +385,7 @@ async function showContactAlert(isNewContact, record) {
         confirmButtonText: isNewContact ? "Añadir Notas" : "Actualizar Notas",
         denyButtonText: record.appointment ? "Ver Cita" : "Agendar Cita",
         cancelButtonText: "Cancelar",
-        confirmButtonColor:"#3a3ca4"
+        confirmButtonColor: "#3a3ca4"
     }).then((result) => {
         if (result.isConfirmed) {
             showNotesAlert(isNewContact, record);
@@ -428,7 +428,7 @@ async function showNotesAlert(isNewContact, record) {
 
         record.notes = notesResult.value;
 
-        if(!response.ok || !responseData.success) {
+        if (!response.ok || !responseData.success) {
             await Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
@@ -497,7 +497,7 @@ async function showScheduleAlert(isNewContact, record) {
 
         const schedulePayload = {
             e_scan_id: record.e_scan_id,
-            appointment_id: record.appointment ? record.appointment.appointment_id : 0, 
+            appointment_id: record.appointment ? record.appointment.appointment_id : 0,
             date: date,
             hour: hour,
             description: description
@@ -510,7 +510,7 @@ async function showScheduleAlert(isNewContact, record) {
         });
         const responseData = await response.json().catch(() => ({}));
 
-        if(!response.ok) {
+        if (!response.ok) {
             await Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
@@ -528,20 +528,20 @@ async function showScheduleAlert(isNewContact, record) {
             text: responseData.message || "Cita guardada",
             icon: "success"
         }).then(() => showScheduleAlert(isNewContact, record));
-    } else if(scheduleResult.isDismissed) {
+    } else if (scheduleResult.isDismissed) {
         showContactAlert(isNewContact, record);
     } else if (scheduleResult.isDenied) {
         downloadAndShareAppt(isNewContact, record);
     }
-    
+
 }
 
 function escapeICSText(text) {
-  return (text || "")
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\n/g, "\\n");
+    return (text || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,")
+        .replace(/\n/g, "\\n");
 }
 
 
