@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Usuarios{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1" style="font-size:1.4rem;font-weight:600">Gestión de usuarios</h2>
+            <p class="text-muted mb-0" style="font-size:0.875rem">Administra roles y accesos del equipo</p>
+        </div>
+    </div>
+
+    <!-- Barra de herramientas -->
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <input type="text" id="searchInput" class="form-control" placeholder="Buscar por nombre, correo o empresa…"
+            style="max-width:320px">
+        <select id="filterRole" class="form-select" style="max-width:180px">
+            <option value="">Todos los roles</option>
+            <option value="ADMIN">Administrador</option>
+            <option value="STAFF">Staff</option>
+            <option value="EXHIBITOR">Expositor</option>
+        </select>
+    </div>
+
+    <!-- Barra de acciones masivas -->
+    <div id="bulkBar" class="d-none alert mb-3 d-flex align-items-center gap-2 py-2 px-3"
+        style="background:#e8f0fe;border:1px solid #c2d3f8;border-radius:8px">
+        <i class="bi bi-check2-square"></i>
+        <span id="bulkCount" class="flex-grow-1 text-primary fw-500" style="font-size:0.875rem"></span>
+        <select id="bulkRoleSelect" class="form-select form-select-sm" style="max-width:160px">
+            <option value="">Cambiar rol a…</option>
+            <option value="ADMIN">Administrador</option>
+            <option value="STAFF">Staff</option>
+            <option value="EXHIBITOR">Expositor</option>
+        </select>
+        <button class="btn btn-sm btn-outline-primary" onclick="applyBulkRole()">Aplicar</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="confirmBulkDelete()">
+            <i class="bi bi-trash"></i> Eliminar
+        </button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="usersTable">
+                <thead style="background:#2f3850;color:#fff">
+                    <tr>
+                        <th style="width:40px">
+                            <input type="checkbox" id="selectAll" class="form-check-input"
+                                style="background-color:transparent;border-color:#fff">
+                        </th>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Empresa</th>
+                        <th>Rol</th>
+                        <th style="width:100px">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            <div class="spinner-border spinner-border-sm me-2"></div>Cargando usuarios…
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center py-2 px-3"
+            style="background:#f8f9fa;font-size:0.8rem;color:#6c757d">
+            <span id="totalCount">—</span>
+            <span id="filteredCount"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Modal editar usuario -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#2f3850;color:#fff">
+                <h5 class="modal-title">Editar usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted" style="font-size:0.8rem">Nombre</label>
+                    <input type="text" id="editName" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted" style="font-size:0.8rem">Correo</label>
+                    <input type="email" id="editEmail" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted" style="font-size:0.8rem">Empresa</label>
+                    <input type="text" id="editCompany" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted" style="font-size:0.8rem">Rol</label>
+                    <select id="editRole" class="form-select">
+                        <option value="ADMIN">Administrador</option>
+                        <option value="STAFF">Staff</option>
+                        <option value="EXHIBITOR">Expositor</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn text-white" style="background:#2f3850" onclick="saveEdit()">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let allUsers = [];
+    let editingUserId = null;
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+    const roleBadge = {
+        'ADMIN': '<span class="badge" style="background:#e8eaf6;color:#3c3489;font-size:0.75rem">Administrador</span>',
+        'STAFF': '<span class="badge" style="background:#e8f5e9;color:#1b5e20;font-size:0.75rem">Staff</span>',
+        'EXHIBITOR': '<span class="badge" style="background:#fff3e0;color:#e65100;font-size:0.75rem">Expositor</span>',
+    };
+
+    async function loadUsers() {
+        const res = await fetch('/admin/users/list');
+        allUsers = await res.json();
+        renderTable(allUsers);
+        document.getElementById('totalCount').textContent = `${allUsers.length} usuarios en total`;
+    }
+
+    function renderTable(users) {
+        const tbody = document.getElementById('usersBody');
+        if (!users.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron usuarios</td></tr>';
+            document.getElementById('filteredCount').textContent = '';
+            return;
+        }
+        tbody.innerHTML = users.map(u => `
+    <tr data-id="${u.id}">
+      <td><input type="checkbox" class="form-check-input row-check" data-id="${u.id}" onchange="updateBulkBar()"></td>
+      <td class="fw-500">${escHtml(u.name)}</td>
+      <td class="text-muted">${escHtml(u.email)}</td>
+      <td>${escHtml(u.company)}</td>
+      <td>${roleBadge[u.user_type] || u.user_type}</td>
+      <td>
+        <div class="d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary" style="padding:2px 8px" onclick="openEdit(${u.id})" title="Editar">
+            <i class="bi bi-pencil" style="font-size:0.75rem"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" style="padding:2px 8px" onclick="confirmDelete([${u.id}])" title="Eliminar">
+            <i class="bi bi-trash" style="font-size:0.75rem"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+        const diff = users.length !== allUsers.length
+            ? `Mostrando ${users.length} de ${allUsers.length}` : '';
+        document.getElementById('filteredCount').textContent = diff;
+    }
+
+    function escHtml(str) {
+        return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function filterTable() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const role = document.getElementById('filterRole').value;
+        const filtered = allUsers.filter(u => {
+            const matchQ = !q || [u.name, u.email, u.company].some(f => (f || '').toLowerCase().includes(q));
+            const matchR = !role || u.user_type === role;
+            return matchQ && matchR;
+        });
+        renderTable(filtered);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('filterRole').addEventListener('change', filterTable);
+
+    document.getElementById('selectAll').addEventListener('change', function () {
+        document.querySelectorAll('.row-check').forEach(c => c.checked = this.checked);
+        updateBulkBar();
+    });
+
+    function updateBulkBar() {
+        const checked = document.querySelectorAll('.row-check:checked');
+        const bar = document.getElementById('bulkBar');
+        if (checked.length > 0) {
+            bar.classList.remove('d-none');
+            bar.classList.add('d-flex');
+            document.getElementById('bulkCount').textContent = `${checked.length} usuario(s) seleccionado(s)`;
+        } else {
+            bar.classList.add('d-none');
+            bar.classList.remove('d-flex');
+        }
+    }
+
+    function getSelectedIds() {
+        return [...document.querySelectorAll('.row-check:checked')].map(c => parseInt(c.dataset.id));
+    }
+
+    async function applyBulkRole() {
+        const role = document.getElementById('bulkRoleSelect').value;
+        if (!role) { alert('Selecciona un rol'); return; }
+        const ids = getSelectedIds();
+        const res = await fetch('/admin/users/bulk-role', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, role })
+        });
+        const data = await res.json();
+        if (data.success) { loadUsers(); updateBulkBar(); }
+        else alert(data.message);
+    }
+
+    function confirmDelete(ids) {
+        const n = ids.length;
+        if (!confirm(`¿Eliminar ${n} usuario(s)? Esta acción no se puede deshacer.`)) return;
+        deleteUsers(ids);
+    }
+
+    function confirmBulkDelete() {
+        confirmDelete(getSelectedIds());
+    }
+
+    async function deleteUsers(ids) {
+        const res = await fetch('/admin/users/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        const data = await res.json();
+        if (data.success) { loadUsers(); updateBulkBar(); }
+        else alert(data.message);
+    }
+
+    function openEdit(id) {
+        const u = allUsers.find(u => u.id === id);
+        if (!u) return;
+        editingUserId = id;
+        document.getElementById('editName').value = u.name;
+        document.getElementById('editEmail').value = u.email;
+        document.getElementById('editCompany').value = u.company;
+        document.getElementById('editRole').value = u.user_type;
+        editModal.show();
+    }
+
+    async function saveEdit() {
+        const res = await fetch(`/admin/users/${editingUserId}/edit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: document.getElementById('editName').value,
+                email: document.getElementById('editEmail').value,
+                company: document.getElementById('editCompany').value,
+                user_type: document.getElementById('editRole').value
+            })
+        });
+        const data = await res.json();
+        if (data.success) { editModal.hide(); loadUsers(); }
+        else alert(data.message);
+    }
+
+    loadUsers();
+</script>
+{% endblock %}
