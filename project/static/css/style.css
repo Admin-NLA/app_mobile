@@ -119,7 +119,10 @@ button{
     font-weight: bold;
 }
 
-.table{
+#generalTable,
+#generalTable1,
+#attendeesTable,
+#dailyTable {
     display: none;
 }
 
