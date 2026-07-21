@@ -1,10 +1,49 @@
-*{
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body{
+/* ----- AJUSTE DE UX ------------------------------------------------------------------ */
+:root {
+    /* Paleta oficial primaria (Manual de Identidad Grafica CMC) */
+    --cmc-navy: #212E57;
+    --cmc-blue: #2E4880;
+    --cmc-gray-dark: #686868;
+    --cmc-gray-mid: #949493;
+    --cmc-gray-light: #E0E0E0;
+
+    /* Paleta oficial secundaria */
+    --cmc-navy-alt: #232E57;
+    --cmc-blue-alt: #2E4884;
+    --cmc-wine: #692C59;
+    --cmc-teal: #176A87;
+    --cmc-lavender: #857CA5;
+    --cmc-blue-mid: #3A689A;
+    --cmc-teal-light: #699EB2;
+
+    /* Semantica (Opcion B: reconocimiento rapido, tonos apagados) */
+    --cmc-success: #4C8C6B;
+    --cmc-success-border: #35664D;
+    --cmc-success-focus-bg: #4C8C6Bcc;
+    --cmc-success-focus-shadow: #35664Dbd;
+    --cmc-success-focus-border: #6FAF8A;
+
+    --cmc-danger: #A34A4A;
+    --cmc-danger-border: #7A3636;
+    --cmc-danger-focus-bg: #A34A4Aab;
+    --cmc-danger-focus-shadow: #7A36369f;
+    --cmc-danger-focus-border: #C17878;
+}
+
+.btn-dark {
+    background-color: var(--cmc-navy) !important;
+    border-color: var(--cmc-navy) !important;
+}
+
+/* ----- AJUSTE DE UX ------------------------------------------------------------------ */
+
+body {
     min-height: 100svh;
     max-height: 100svh;
     width: 100%;
@@ -12,7 +51,8 @@ body{
     flex-direction: column;
 }
 
-.login-card, .register-card{
+.login-card,
+.register-card {
     width: 100%;
     max-width: 400px;
     border-radius: 12px;
@@ -21,22 +61,22 @@ body{
     background: #fff;
 }
 
-.title{
+.title {
     font-weight: 600;
     text-align: center;
     margin-bottom: 20px;
 }
 
-h2{
+h2 {
     text-align: center;
     margin: 0.5rem 0;
 }
 
 .icons {
-    font-size:12rem;
+    font-size: 12rem;
 }
 
-#camera-container{
+#camera-container {
     position: relative;
     width: 100%;
     max-width: 600px;
@@ -58,23 +98,25 @@ h2{
     appearance: none;
     width: 100%;
     height: 25px;
-    background: #d3d3d3;
+    background: var(--cmc-gray-light);
     outline: none;
     opacity: 0.7;
     -webkit-transition: 0.2s;
     transition: opacity 0.2s;
     border-radius: 25px;
 }
-.slider:hover{
+
+.slider:hover {
     opacity: 1;
 }
+
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 25px;
     height: 25px;
     border-radius: 25px;
-    background: #38435e;
+    background: var(--cmc-navy);
     cursor: pointer;
 }
 
@@ -82,7 +124,7 @@ h2{
     width: 25px;
     height: 25px;
     border-radius: 25px;
-    background: #38435e;
+    background: var(--cmc-navy);
     cursor: pointer;
 }
 
@@ -103,17 +145,17 @@ h2{
     padding-bottom: 15px;
 }
 
-button{
+button {
     padding: 0.8rem 1.2rem;
     font-size: 1rem;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    background-color: #2f3850;
+    background-color: var(--cmc-navy);
     color: #ffffff;
 }
 
-#msg{
+#msg {
     text-align: center;
     word-break: break-all;
     font-weight: bold;
@@ -157,34 +199,34 @@ tr.hide {
     z-index: 3;
 }
 
-#attendeesTable thead th{
+#attendeesTable thead th {
     position: sticky;
     top: 0;
     z-index: 3;
 }
 
-.content-section{
+.content-section {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
 }
 
-.alert-input{
+.alert-input {
     width: 100% !important;
     max-width: 400px;
     box-sizing: border-box;
 }
 
-.alert-textarea{
+.alert-textarea {
     width: 100% !important;
     max-width: 400px;
     min-height: 80px;
 }
 
 .completed {
-    background-color: #e6e6e6;
-    border: 2px solid #2f3850;
+    background-color: var(--cmc-gray-light);
+    border: 2px solid var(--cmc-navy);
 }
 
 .form-check-input.check-yes {
