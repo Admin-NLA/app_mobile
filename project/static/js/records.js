@@ -1,4 +1,4 @@
-const recordsTable = document.getElementById("recordsTable");
+const recordsContainer = document.getElementById("recordsContainer");
 const activeEventLabel = document.getElementById("activeEventLabel");
 let records;
 let eventName;
@@ -10,14 +10,14 @@ let recordsStream = null;
 let streamRetryTimeout = null;
 const expandedRecordIds = new Set();
 
-function toggleExportButton(activeEvent){
-    const div =  document.getElementById("topDiv");
+function toggleExportButton(activeEvent) {
+    const div = document.getElementById("topDiv");
     const exportButton = document.getElementById("exportBtn");
 
     if (activeEvent) {
         if (!exportButton) {
             const btn = document.createElement("button");
-            btn.id= "exportBtn";
+            btn.id = "exportBtn";
             btn.textContent = "Exportar Contactos";
             btn.onclick = exportRecords;
             btn.className = "btn btn-sm btn-success";
@@ -46,62 +46,52 @@ function updateEventLabel(eventData) {
 }
 
 function renderRecords() {
-    const theadRow = recordsTable ? recordsTable.querySelector("thead tr") : null;
-    const tbody = recordsTable ? recordsTable.querySelector("tbody") : null;
-    if (!theadRow || !tbody) return;
+    if (!recordsContainer) return;
 
-    tbody.innerHTML = "";
+    recordsContainer.innerHTML = "";
     Object.keys(notesChangedMap).forEach((key) => {
         delete notesChangedMap[key];
     });
-
-    while (theadRow.cells.length > 3) {
-        theadRow.deleteCell(-1);
-    }
-    if (window.innerWidth > 768) {
-        theadRow.insertCell();
-    }
 
     const visibleRecordIds = new Set();
 
     (records || []).forEach((record) => {
         visibleRecordIds.add(record.e_scan_id);
-        const row = tbody.insertRow();
-        row.classList.add("align-middle");
 
-        const expandCell = row.insertCell();
-        const fullNameCell = row.insertCell();
-        const emailCell = row.insertCell();
+        const card = document.createElement("div");
+        card.className = "record-card";
+
+        const header = document.createElement("div");
+        header.className = "d-flex justify-content-between align-items-start gap-2";
 
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn btn-sm btn-outline-primary";
         btn.textContent = "+";
-        expandCell.appendChild(btn);
 
-        fullNameCell.textContent = `${record.scanned_a_last_name} ${record.scanned_a_name}`;
-        emailCell.textContent = record.scanned_a_email || "N/A";
-
-        let detailsColSpan = 3;
+        const nameBlock = document.createElement("div");
+        nameBlock.className = "text-start flex-grow-1 mx-2";
+        nameBlock.innerHTML = `
+            <p class="mb-0 fw-medium">${record.scanned_a_last_name} ${record.scanned_a_name}</p>
+            <p class="mb-0 text-secondary" style="font-size:0.85rem;">${record.scanned_a_email || "N/A"}</p>
+        `;
 
         const scheduleBtn = document.createElement("button");
         scheduleBtn.type = "button";
         scheduleBtn.id = `scheduleBtn${record.e_scan_id}`;
         scheduleBtn.className = "btn btn-sm btn-dark";
-
         scheduleBtn.textContent = record.appointment ? "Ver Cita" : "Agendar Cita";
 
+        header.appendChild(btn);
+        header.appendChild(nameBlock);
         if (window.innerWidth > 768) {
-            const scheduleCell = row.insertCell();
-            scheduleCell.appendChild(scheduleBtn);
-            detailsColSpan = 4;
+            header.appendChild(scheduleBtn);
         }
+        card.appendChild(header);
 
-        const detailsRow = tbody.insertRow();
-        detailsRow.classList.add("d-none");
-        const detailsCell = detailsRow.insertCell();
-        detailsCell.colSpan = detailsColSpan;
-        detailsCell.innerHTML = `
+        const details = document.createElement("div");
+        details.className = "d-none mt-3";
+        details.innerHTML = `
             <div class="container-fluid d-flex flex-column flex-md-row text-start">
                 <div class="container d-flex flex-column justify-content-center mb-3 fs-5">
                     <span><strong>Día:</strong> ${record.day}</span>
@@ -110,7 +100,7 @@ function renderRecords() {
                     <span><strong>Empresa:</strong> ${record.scanned_a_company || "N/A"}</span>
                     <span class="fw-bold mt-3 mb-2">Estado de la Cita:</span>
                     <div id="appointmentStatus${record.e_scan_id}">
-                        <span class="fw-bold text-white"></span>
+                        <span></span>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input check-yes" type="radio" name="apptStatus${record.e_scan_id}" 
@@ -137,13 +127,15 @@ function renderRecords() {
                 </div>
             </div>
         `;
+        card.appendChild(details);
+        recordsContainer.appendChild(card);
 
         if (window.innerWidth < 768) {
-            document.getElementById(`scheduleContainer${record.e_scan_id}`).appendChild(scheduleBtn);
+            details.querySelector(`#scheduleContainer${record.e_scan_id}`).appendChild(scheduleBtn);
         }
 
-        const notesTA =  document.getElementById(`notesText${record.e_scan_id}`);
-        const saveBtn =  document.getElementById(`saveBtn${record.e_scan_id}`);
+        const notesTA = document.getElementById(`notesText${record.e_scan_id}`);
+        const saveBtn = document.getElementById(`saveBtn${record.e_scan_id}`);
 
         notesTA.addEventListener("input", () => {
             if (notesTA.value.trim() !== (record.notes || "")) {
@@ -156,8 +148,8 @@ function renderRecords() {
         });
 
         btn.addEventListener("click", () => {
-            const isHidden = detailsRow.classList.contains("d-none");
-            detailsRow.classList.toggle("d-none", !isHidden);
+            const isHidden = details.classList.contains("d-none");
+            details.classList.toggle("d-none", !isHidden);
             btn.textContent = isHidden ? "−" : "+";
             if (isHidden) {
                 expandedRecordIds.add(record.e_scan_id);
@@ -167,10 +159,10 @@ function renderRecords() {
         });
 
         if (expandedRecordIds.has(record.e_scan_id)) {
-            detailsRow.classList.remove("d-none");
+            details.classList.remove("d-none");
             btn.textContent = "−";
         }
-        
+
         const apptStatusText = document.getElementById(`appointmentStatus${record.e_scan_id}`);
         const apptCompletedRadio = document.getElementById(`appointmentCompletedRadio${record.e_scan_id}`);
         const apptNoCompletedRadio = document.getElementById(`appointmentNoCompletedRadio${record.e_scan_id}`);
@@ -241,7 +233,7 @@ function renderRecords() {
 
                 const schedulePayload = {
                     e_scan_id: record.e_scan_id,
-                    appointment_id: record.appointment ? record.appointment.appointment_id : 0, 
+                    appointment_id: record.appointment ? record.appointment.appointment_id : 0,
                     date: date,
                     hour: hour,
                     description: description
@@ -254,7 +246,7 @@ function renderRecords() {
                 });
                 const responseData = await response.json().catch(() => ({}));
 
-                if(!response.ok) {
+                if (!response.ok) {
                     await Swal.fire({
                         theme: "dark",
                         title: "<strong>ERROR</strong>",
@@ -280,14 +272,14 @@ function renderRecords() {
                     icon: "success"
                 });
 
-            } else if(scheduleResult.isDenied) {
+            } else if (scheduleResult.isDenied) {
                 downloadAndShareAppointment(record);
             }
         });
 
         if (!record.appointment) {
             statusText = "Cita no Agendada";
-            statusTextClass = "d-inline-block bg-secondary text-muted border border-4 border-dark rounded p-2";
+            statusTextClass = "appt-badge appt-badge--none";
         } else {
             apptCompletedRadio.disabled = false;
             apptNoCompletedRadio.disabled = false;
@@ -300,22 +292,22 @@ function renderRecords() {
         apptStatusText.className = statusTextClass;
 
         document.querySelectorAll(`input[name="apptStatus${record.e_scan_id}"]`)
-        .forEach(radio => {
-            radio.addEventListener("focus", function () {
-                this.dataset.waschecked = this.checked;
+            .forEach(radio => {
+                radio.addEventListener("focus", function () {
+                    this.dataset.waschecked = this.checked;
+                });
+                radio.addEventListener("change", async function () {
+                    if (this.checked) {
+                        const ok = await updateAppointmentStatus(this, record);
+                        if (!ok) {
+                            const radios = document.querySelectorAll(`input[name="apptStatus${record.e_scan_id}"][value="${this.value}"]`);
+                            radios.forEach(r => r.checked = false);
+                            const prev = Array.from(radios).find(r => r.dataset.waschecked === "true");
+                            if (prev) prev.checked = true;
+                        }
+                    }
+                });
             });
-            radio.addEventListener("change", async function () {
-            if (this.checked) {
-                const ok = await updateAppointmentStatus(this, record);
-                if(!ok) {
-                    const radios = document.querySelectorAll(`input[name="apptStatus${record.e_scan_id}"][value="${this.value}"]`);
-                    radios.forEach(r => r.checked = false);
-                    const prev = Array.from(radios).find(r => r.dataset.waschecked === "true");
-                    if (prev) prev.checked = true;
-                }
-            }
-            });
-        });
 
     });
 
@@ -357,7 +349,7 @@ async function updateNotes(e_scan_id, notes) {
 
     const updateData = await response.json().catch(() => ({}));
 
-    if(!response.ok || !updateData.success) {
+    if (!response.ok || !updateData.success) {
         await Swal.fire({
             theme: "dark",
             title: "<strong>ERROR</strong>",
@@ -417,7 +409,7 @@ function insertNewRecord(record) {
 function updateSingleRecord(updatedRecord) {
     const index = records.findIndex(r => r.e_scan_id === updatedRecord.e_scan_id);
 
-    if(index === -1) return;
+    if (index === -1) return;
 
     records[index] = updatedRecord;
     renderRecords();
@@ -432,7 +424,7 @@ function hasPendingNotesForRecord(eScanId) {
 }
 
 function startRecordsStream() {
-    if(recordsStream) return;
+    if (recordsStream) return;
 
     recordsStream = io({
         transports: ["websocket"]
@@ -445,9 +437,9 @@ function startRecordsStream() {
     });
 
     recordsStream.on("records_update", (payload) => {
-        if(!payload) return;
+        if (!payload) return;
 
-        if(payload.type === "record_created") {
+        if (payload.type === "record_created") {
             insertNewRecord(payload.record);
             return;
         }
@@ -467,7 +459,7 @@ function startRecordsStream() {
     recordsStream.on("disconnect", () => {
         recordsStream = null;
 
-        if (!streamRetryTimeout) { 
+        if (!streamRetryTimeout) {
             streamRetryTimeout = setTimeout(() => {
                 streamRetryTimeout = null;
                 startRecordsStream();
@@ -502,12 +494,12 @@ async function exportRecords() {
     fetch("/export-records")
         .then(async response => {
             if (!response.ok) {
-                const err = await response.json().catch(() =>  ({}));
+                const err = await response.json().catch(() => ({}));
 
                 await Swal.fire({
                     theme: "dark",
                     title: "<strong>ERROR</strong>",
-                    text:  err.error || "Ocurrió un error al exportar",
+                    text: err.error || "Ocurrió un error al exportar",
                     icon: "error"
                 });
                 return;
@@ -535,7 +527,7 @@ async function exportRecords() {
             Swal.fire({
                 theme: "dark",
                 title: "<strong>ERROR</strong>",
-                text:  "Descarga fallida " + err.message,
+                text: "Descarga fallida " + err.message,
                 icon: "error"
             });
         });
@@ -568,7 +560,7 @@ END:VCALENDAR`;
     link.click();
     link.remove();
     URL.revokeObjectURL(link.href);
-     
+
     await Swal.fire({
         theme: "dark",
         title: "<strong>ÉXITO</strong>",
@@ -599,7 +591,7 @@ async function updateAppointmentStatus(radio, record) {
         return false;
     }
 
-    if(!hasAppointmentTimeReached(record.appointment)) {
+    if (!hasAppointmentTimeReached(record.appointment)) {
         await Swal.fire({
             theme: "dark",
             title: "<strong>CUIDADO</strong>",
@@ -625,7 +617,7 @@ async function updateAppointmentStatus(radio, record) {
 
     const responseData = await response.json().catch(() => ({}));
 
-    if(!response.ok) {
+    if (!response.ok) {
         await Swal.fire({
             theme: "dark",
             title: "<strong>ERROR</strong>",
@@ -657,9 +649,9 @@ function hasAppointmentTimeReached(appointment) {
     const now = new Date();
 
     const [year, month, day] = appointment.date.split("-").map(Number);
-    const apptDate = new Date(year, month-1, day);
+    const apptDate = new Date(year, month - 1, day);
     const [hours, minutes] = appointment.hour.split(":").map(Number);
-    apptDate.setHours(hours,minutes,0,0);
+    apptDate.setHours(hours, minutes, 0, 0);
 
     return now >= apptDate;
 }
@@ -668,9 +660,9 @@ function isAppointmentExpired(appointment) {
     const now = new Date();
 
     const [year, month, day] = appointment.date.split("-").map(Number);
-    const apptDate = new Date(year, month-1, day);
+    const apptDate = new Date(year, month - 1, day);
     const [hours, minutes] = appointment.hour.split(":").map(Number);
-    apptDate.setHours(hours,minutes,0,0);
+    apptDate.setHours(hours, minutes, 0, 0);
 
     const apptDeadline = new Date(apptDate.getTime() + 2 * 60 * 60 * 1000);
 
@@ -689,32 +681,32 @@ function changeApptDisplayedStatus(appointment) {
     if (appointment.status) {
         completedRadio.checked = true;
         statusText = "Cita Completada";
-        statusContainerClass = "d-inline-block bg-success border border-4 border-secondary rounded p-2";
+        statusContainerClass = "appt-badge appt-badge--completed";
     } else {
         if (hasAppointmentTimeReached(appointment)) {
             if (appointment.status === false || isAppointmentExpired(appointment)) {
                 statusText = "Cita no Completada";
-                statusContainerClass = "d-inline-block bg-danger border border-4 border-secondary rounded p-2";
+                statusContainerClass = "appt-badge appt-badge--not-completed";
                 noCompletedRadio.checked = true;
             } else {
                 statusText = "Cita en Curso";
-                statusContainerClass = "d-inline-block bg-info border border-4 border-secondary rounded p-2";
+                statusContainerClass = "appt-badge appt-badge--in-progress";
             }
-            
+
         } else {
             statusText = "Cita Pendiente";
-            statusContainerClass = "d-inline-block bg-warning border border-4 border-secondary rounded p-2";
+            statusContainerClass = "appt-badge appt-badge--pending";
         }
     }
     return [statusText, statusContainerClass];
 }
 
 function escapeICSText(text) {
-  return (text || "")
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\n/g, "\\n");
+    return (text || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,")
+        .replace(/\n/g, "\\n");
 }
 
 if (document.readyState === "loading") {
