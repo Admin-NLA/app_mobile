@@ -171,6 +171,8 @@ def exhibitor_records_post():
                 "scanned_a_phone": scan.scanned_a_phone,
                 "scanned_a_email": scan.scanned_a_email,
                 "scanned_a_company": scan.scanned_a_company,
+                "scanned_by_rep_name": scan.scanned_by_rep_name,
+                "scanned_by_login": scan.user.name,
                 "notes": scan.notes,
                 "appointment": scan.appointment.to_dict() if scan.appointment else None,
             }
