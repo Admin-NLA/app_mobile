@@ -4,7 +4,6 @@
     box-sizing: border-box;
 }
 
-/* ----- AJUSTE DE UX ------------------------------------------------------------------ */
 :root {
     /* Paleta oficial primaria (Manual de Identidad Grafica CMC) */
     --cmc-navy: #212E57;
@@ -36,19 +35,13 @@
     --cmc-danger-focus-border: #C17878;
 }
 
-.btn-dark {
-    background-color: var(--cmc-navy) !important;
-    border-color: var(--cmc-navy) !important;
-}
-
-/* ----- AJUSTE DE UX ------------------------------------------------------------------ */
-
 body {
     min-height: 100svh;
     max-height: 100svh;
     width: 100%;
     display: flex;
     flex-direction: column;
+    font-family: 'Commissioner', sans-serif;
 }
 
 .login-card,
@@ -230,36 +223,87 @@ tr.hide {
 }
 
 .form-check-input.check-yes {
-    border: 2px solid #1b7430;
+    border: 2px solid var(--cmc-success-border);
 }
 
 .form-check-input.check-no {
-    border: 2px solid #831e28;
+    border: 2px solid var(--cmc-danger-border);
 }
 
 .form-check-input.check-yes:checked {
-    background-color: #28a745;
-    border: 2px solid #1b7430;
+    background-color: var(--cmc-success);
+    border: 2px solid var(--cmc-success-border);
 }
 
 .form-check-input.check-no:checked {
-    background-color: #dc3545;
-    border: 2px solid #831e28;
+    background-color: var(--cmc-danger);
+    border: 2px solid var(--cmc-danger-border);
 }
 
 .form-check-input.check-yes:focus {
-    background-color: #80b88dcc !important;
-    box-shadow: 0 0 0 0.25rem #27843dbd !important;
-    border-color: #3cbf5a !important;
+    background-color: var(--cmc-success-focus-bg) !important;
+    box-shadow: 0 0 0 0.25rem var(--cmc-success-focus-shadow) !important;
+    border-color: var(--cmc-success-focus-border) !important;
 }
 
 .form-check-input.check-no:focus {
-    background-color: #b16e74ab !important;
-    box-shadow: 0 0 0 0 0.25rem #ec47589f !important;
-    border-color: #c26972 !important;
+    background-color: var(--cmc-danger-focus-bg) !important;
+    box-shadow: 0 0 0 0 0.25rem var(--cmc-danger-focus-shadow) !important;
+    border-color: var(--cmc-danger-focus-border) !important;
 }
 
 textarea {
     resize: none;
     overflow: auto;
+}
+
+.btn-dark {
+    background-color: var(--cmc-navy) !important;
+    border-color: var(--cmc-navy) !important;
+}
+
+.appt-badge {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 4px 14px;
+    border-radius: 999px;
+}
+
+.appt-badge--none {
+    background-color: var(--cmc-gray-light);
+    color: var(--cmc-gray-dark);
+}
+
+.appt-badge--completed {
+    background-color: var(--cmc-success);
+    color: #ffffff;
+}
+
+.appt-badge--not-completed {
+    background-color: var(--cmc-danger);
+    color: #ffffff;
+}
+
+.appt-badge--in-progress {
+    background-color: var(--cmc-teal);
+    color: #ffffff;
+}
+
+.appt-badge--pending {
+    background-color: var(--cmc-lavender);
+    color: #ffffff;
+}
+
+.record-card {
+    background: #fff;
+    border: 0.5px solid var(--cmc-gray-light);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+}
+
+.btn-success {
+    background-color: var(--cmc-success) !important;
+    border-color: var(--cmc-success-border) !important;
 }
