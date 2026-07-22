@@ -98,6 +98,7 @@ function renderRecords() {
                     <span><strong>Nombre:</strong> ${record.scanned_a_last_name} ${record.scanned_a_name}</span>
                     <span><strong>Teléfono:</strong> ${record.scanned_a_phone || "N/A"}</span>
                     <span><strong>Empresa:</strong> ${record.scanned_a_company || "N/A"}</span>
+                    <span><strong>Escaneado por:</strong> ${record.scanned_by_rep_name || record.scanned_by_login || "Sin registrar"}</span>
                     <span class="fw-bold mt-3 mb-2">Estado de la Cita:</span>
                     <div id="appointmentStatus${record.e_scan_id}">
                         <span></span>
