@@ -9,11 +9,14 @@ from flask import (
     jsonify,
     abort,
     g,
+    session,
 )
+from datetime import date
 from flask_login import login_user, logout_user, login_required, current_user
 from functools import wraps
 
 from .models import User, Stats
+from .events import get_active_event
 from . import db
 
 auth = Blueprint("auth", __name__)
@@ -51,6 +54,43 @@ def login_post():
         return redirect(url_for("auth.login"))
 
     login_user(user, remember=remember)
+
+    if user.user_type == "EXHIBITOR":
+        if session.get("rep_selected_date") != date.today().isoformat():
+            return redirect(url_for("auth.select_rep"))
+
+    return redirect(url_for("main.home"))
+
+
+@auth.route("/select-rep")
+@login_required
+@require_user_type("EXHIBITOR")
+def select_rep():
+    event = get_active_event()
+    reps = []
+    if event and event.stats_ev and event.stats_ev.stats:
+        exhibitor_list = event.stats_ev.stats.get("exhibitor_scan_stats", [])
+        own_company = (current_user.company or "").strip().upper()
+        reps = sorted(
+            {
+                f'{row.get("Nombre(s)", "").strip()} {row.get("Apellido(s)", "").strip()}'.strip()
+                for row in exhibitor_list
+                if row.get("Empresa", "").strip().upper() == own_company
+            }
+        )
+    return render_template("select_rep.html", reps=reps)
+
+
+@auth.route("/select-rep", methods=["POST"])
+@login_required
+@require_user_type("EXHIBITOR")
+def select_rep_post():
+    rep_name = request.form.get("rep_name", "").strip()
+    if not rep_name:
+        flash("Selecciona tu nombre para continuar")
+        return redirect(url_for("auth.select_rep"))
+    session["scanned_by_rep_name"] = rep_name
+    session["rep_selected_date"] = date.today().isoformat()
     return redirect(url_for("main.home"))
 
 
