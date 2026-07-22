@@ -229,11 +229,13 @@ function updateData() {
                         const newRow = exhibitorScansTable.tBodies[0].insertRow();
                         const idCell = newRow.insertCell();
                         const companyCell = newRow.insertCell();
+                        const contactCountCell = newRow.insertCell();
                         const apptCountCell = newRow.insertCell();
                         const completedApptCountCell = newRow.insertCell();
 
                         idCell.textContent = nExhibitorCompany + 1;
                         companyCell.textContent = exhibitorScansStats[nExhibitorCompany].company;
+                        contactCountCell.textContent = exhibitorScansStats[nExhibitorCompany].contact_count;
                         apptCountCell.textContent = exhibitorScansStats[nExhibitorCompany].appt_count;
                         completedApptCountCell.textContent = exhibitorScansStats[nExhibitorCompany].completed_appt_count;
                     }
