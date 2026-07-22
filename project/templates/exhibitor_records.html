@@ -5,49 +5,38 @@
 {% block b_e_records %}<a href="#" class="nav-link active" aria-current="page">Contactos</a>{% endblock %}
 
 {% block header_title %}
-    <h1 class="mb-3">Contactos Guardados</h1>
+<h1 class="mb-3">Contactos Guardados</h1>
 {% endblock %}
 
 {% block content %}
 
-    <section class="content-section">
+<section class="content-section">
 
-        <div class="d-flex justify-content-between mx-3" id="topDiv">
-            <span class="text-muted" id="activeEventLabel">
-                {% if active_event %}
-                    Registros para: <strong>{{ active_event.location }} {{ active_event.year }}</strong>
-                    <span class="small">({{ active_event.start_date.strftime('%d/%m/%Y') }} – {{ active_event.end_date.strftime('%d/%m/%Y') }})</span>
-                {% else %}
-                    No hay evento activo para la fecha de hoy.
-                {% endif %}
-            </span>
-            
-        </div>
+    <div class="d-flex justify-content-between mx-3" id="topDiv">
+        <span class="text-muted" id="activeEventLabel">
+            {% if active_event %}
+            Registros para: <strong>{{ active_event.location }} {{ active_event.year }}</strong>
+            <span class="small">({{ active_event.start_date.strftime('%d/%m/%Y') }} – {{
+                active_event.end_date.strftime('%d/%m/%Y') }})</span>
+            {% else %}
+            No hay evento activo para la fecha de hoy.
+            {% endif %}
+        </span>
 
-        {% if active_event %}
-            <span class="text-muted fst-italic mx-3 mb-3" id="eventDisclaimer">
-                Disponible durante el evento y los primeros 30 días después de su finalización.
-            </span>
-        {% endif %}
+    </div>
 
-        <div class="table-responsive mx-2 overflow-auto">
-            <table class="table table-bordered border-dark align-middle text-center full-table" id="recordsTable" style="display:table;flex: 1;">
-                <thead>
-                    <tr>
-                        <th style="width: 3rem;"></th>
-                        <th>Nombre Completo</th>
-                        <th>Correo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-        
-    </section>
+    {% if active_event %}
+    <span class="text-muted fst-italic mx-3 mb-3" id="eventDisclaimer">
+        Disponible durante el evento y los primeros 30 días después de su finalización.
+    </span>
+    {% endif %}
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', filename='js/records.js') }}"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <div class="mx-2" id="recordsContainer" style="flex:1; overflow-y:auto;"></div>
+
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ url_for('static', filename='js/records.js') }}"></script>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 {% endblock %}
