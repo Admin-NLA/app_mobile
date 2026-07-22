@@ -5,235 +5,236 @@
 {% block b_stats %}<a href="#" class="nav-link active" aria-current="page">Estadísticos</a>{% endblock %}
 
 {% block header_title %}
-    <h1 class="mb-3">Estadísticas</h1>
+<h1 class="mb-3">Estadísticas</h1>
 {% endblock %}
 
 {% block content %}
-    <section class="content-section">
+<section class="content-section">
 
-        <div class="container-fluid d-flex flex-row mb-3 gap-3">
-            <select class="form-select form-select-sm" id="statsSelector">
-                <option selected disabled hidden value="">Escoge un Archivo de Estadísticas</option>
-                {% for file in stats_files %}
-                    <option value="{{ file['id'] }}">{{ file['name'] }}</option>
-                {% endfor %}
-            </select>
+    <div class="container-fluid d-flex flex-row mb-3 gap-3">
+        <select class="form-select form-select-sm" id="statsSelector">
+            <option selected disabled hidden value="">Escoge un Archivo de Estadísticas</option>
+            {% for file in stats_files %}
+            <option value="{{ file['id'] }}">{{ file['name'] }}</option>
+            {% endfor %}
+        </select>
 
-        </div>
+    </div>
 
-        <div class="container-fluid d-flex flex-row mb-3 gap-3">
-            <select class="form-select form-select-sm" id="selector">
-                <option selected disabled hidden>Escoge una Tabla</option>
-                <option value="generalStats">Estadísticas Generales</option>
-                <option value="attendeeStats">Asistentes</option>
-                <option value="dailyStats">Estadísticas por Día</option>
-                <option value="exhibitorStats">Expositores</option>
-                <option value="exhibitorScansStats">Citas de Expositor</option>
-                <option value="speakerStats">Speakers</option>
-            </select>
+    <div class="container-fluid d-flex flex-row mb-3 gap-3">
+        <select class="form-select form-select-sm" id="selector">
+            <option selected disabled hidden>Escoge una Tabla</option>
+            <option value="generalStats">Estadísticas Generales</option>
+            <option value="attendeeStats">Asistentes</option>
+            <option value="dailyStats">Estadísticas por Día</option>
+            <option value="exhibitorStats">Expositores</option>
+            <option value="exhibitorScansStats">Estadístico de Expositor</option>
+            <option value="speakerStats">Speakers</option>
+        </select>
 
-            <input type="text" class="form-control" id="searchInput" placeholder="Buscar" disabled>
-        </div>
+        <input type="text" class="form-control" id="searchInput" placeholder="Buscar" disabled>
+    </div>
 
-        <div class="table-responsive mx-2 overflow-auto">
+    <div class="table-responsive mx-2 overflow-auto">
 
-            <table class="table table-dark table-striped align-middle text-center" id="generalTable">
-                <thead>
-                    <tr>
-                        <th>Total de Asistentes</th>
-                        <th>Asistentes Combo</th>
-                        <th>Asistentes Solo Sesiones</th>
-                        <th>Asistentes Solo Cursos</th>
-                        <th>Asistentes Expo</th>
-                        <th>Asistentes Becados</th>
-                        <th>Becados Combo</th>
-                        <th>Becados Sesiones</th>
-                        <th>Becados Cursos</th>
-                        <th>Becados Expo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
+        <table class="table table-dark table-striped align-middle text-center" id="generalTable">
+            <thead>
+                <tr>
+                    <th>Total de Asistentes</th>
+                    <th>Asistentes Combo</th>
+                    <th>Asistentes Solo Sesiones</th>
+                    <th>Asistentes Solo Cursos</th>
+                    <th>Asistentes Expo</th>
+                    <th>Asistentes Becados</th>
+                    <th>Becados Combo</th>
+                    <th>Becados Sesiones</th>
+                    <th>Becados Cursos</th>
+                    <th>Becados Expo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
 
-            <table class="table table-dark table-striped align-middle text-center" id="generalTable1">
-                <thead>
-                    <tr>
-                        <th>Total A. Escaneados</th>
-                        <th>Total Becados Escaneadas</th>
-                        <th>A. Combo</th>
-                        <th>A. Solo Sesiones</th>
-                        <th>A. Solo Cursos</th>
-                        <th>A. Expo</th>
-                        <th>Becados Combo</th>
-                        <th>Becados Sesiones</th>
-                        <th>Becados Cursos</th>
-                        <th>Becados Expo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
+        <table class="table table-dark table-striped align-middle text-center" id="generalTable1">
+            <thead>
+                <tr>
+                    <th>Total A. Escaneados</th>
+                    <th>Total Becados Escaneadas</th>
+                    <th>A. Combo</th>
+                    <th>A. Solo Sesiones</th>
+                    <th>A. Solo Cursos</th>
+                    <th>A. Expo</th>
+                    <th>Becados Combo</th>
+                    <th>Becados Sesiones</th>
+                    <th>Becados Cursos</th>
+                    <th>Becados Expo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
 
-            <table class="table table-dark table-striped align-middle text-center" id="attendeesTable">
-                <thead >
-                    <tr>
-                        <th style="z-index: 4;">ID</th>
-                        <th>Agente</th>
-                        <th>Apellido(s)</th>
-                        <th>Nombre(s)</th>
-                        <th>Empresa</th>
-                        <th>Tipo de Asistente</th>
-                        <th>Beca</th>
-                        <th>Día 1</th>
-                        <th>Día 2</th>
-                        <th>Día 3</th>
-                        <th>Día 4</th>
-                    </tr>
-                </thead>
+        <table class="table table-dark table-striped align-middle text-center" id="attendeesTable">
+            <thead>
+                <tr>
+                    <th style="z-index: 4;">ID</th>
+                    <th>Agente</th>
+                    <th>Apellido(s)</th>
+                    <th>Nombre(s)</th>
+                    <th>Empresa</th>
+                    <th>Tipo de Asistente</th>
+                    <th>Beca</th>
+                    <th>Día 1</th>
+                    <th>Día 2</th>
+                    <th>Día 3</th>
+                    <th>Día 4</th>
+                </tr>
+            </thead>
 
-                <tbody>
+            <tbody>
 
-                </tbody>
-                
-            </table>
+            </tbody>
 
-            <table class="table table-dark table-striped align-middle text-center" id="dailyTable">
-                <thead>
-                    <tr>
-                        <th>Día</th>
-                        <th>Combo</th>
-                        <th>Solo Cursos</th>
-                        <th>Solo Sesiones</th>
-                        <th>Solo Expo</th>
-                        <th>Total Esperado</th>
-                        <th>Total Real</th>
-                        <th>Becas Escaneadas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    
-                </tbody>
-            </table>
+        </table>
 
-            <table class="table table-dark table-striped align-middle text-center" id="exhibitorGeneralTable">
-                <thead>
-                    <tr>
-                        <th>Total Esperado</th>
-                        <th>Total Real Día 3</th>
-                        <th>Total Real Día 4</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
+        <table class="table table-dark table-striped align-middle text-center" id="dailyTable">
+            <thead>
+                <tr>
+                    <th>Día</th>
+                    <th>Combo</th>
+                    <th>Solo Cursos</th>
+                    <th>Solo Sesiones</th>
+                    <th>Solo Expo</th>
+                    <th>Total Esperado</th>
+                    <th>Total Real</th>
+                    <th>Becas Escaneadas</th>
+                </tr>
+            </thead>
+            <tbody>
 
-            <table class="table table-dark table-striped align-middle text-center" id="exhibitorsTable">
-                <thead >
-                    <tr>
-                        <th style="z-index: 4;">ID</th>
-                        <th>Apellido(s)</th>
-                        <th>Nombre(s)</th>
-                        <th>Empresa</th>
-                        <th>Tipo</th>
-                        <th>Día 3</th>
-                        <th>Día 4</th>
-                    </tr>
-                </thead>
+            </tbody>
+        </table>
 
-                <tbody>
+        <table class="table table-dark table-striped align-middle text-center" id="exhibitorGeneralTable">
+            <thead>
+                <tr>
+                    <th>Total Esperado</th>
+                    <th>Total Real Día 3</th>
+                    <th>Total Real Día 4</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
 
-                </tbody>
-                
-            </table>
+        <table class="table table-dark table-striped align-middle text-center" id="exhibitorsTable">
+            <thead>
+                <tr>
+                    <th style="z-index: 4;">ID</th>
+                    <th>Apellido(s)</th>
+                    <th>Nombre(s)</th>
+                    <th>Empresa</th>
+                    <th>Tipo</th>
+                    <th>Día 3</th>
+                    <th>Día 4</th>
+                </tr>
+            </thead>
 
-            <table class="table table-dark table-striped align-middle text-center" id="speakersGeneralTable">
-                <thead>
-                    <tr>
-                        <th>Total Esperado</th>
-                        <th>Total Real Día 1</th>
-                        <th>Total Real Día 2</th>
-                        <th>Total Real Día 3</th>
-                        <th>Total Real Día 4</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
+            <tbody>
 
-            <table class="table table-dark table-striped align-middle text-center" id="speakersTable">
-                <thead >
-                    <tr>
-                        <th style="z-index: 4;">ID</th>
-                        <th>Apellido(s)</th>
-                        <th>Nombre(s)</th>
-                        <th>Empresa</th>
-                        <th>Tipo</th>
-                        <th>Día 1</th>
-                        <th>Día 2</th>
-                        <th>Día 3</th>
-                        <th>Día 4</th>
-                    </tr>
-                </thead>
+            </tbody>
 
-                <tbody>
+        </table>
 
-                </tbody>
-                
-            </table>
+        <table class="table table-dark table-striped align-middle text-center" id="speakersGeneralTable">
+            <thead>
+                <tr>
+                    <th>Total Esperado</th>
+                    <th>Total Real Día 1</th>
+                    <th>Total Real Día 2</th>
+                    <th>Total Real Día 3</th>
+                    <th>Total Real Día 4</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
 
-            <table class="table table-dark table-striped align-middle text-center" id="exhibitorScansTable">
-                <thead>
-                    <tr>
-                        <th>N°</th>
-                        <th>Empresa</th>
-                        <th>Citas</th>
-                        <th>Citas Completadas</th>
-                    </tr>
-                </thead>
-                <tbody>
-            
-                </tbody>
-            </table>
+        <table class="table table-dark table-striped align-middle text-center" id="speakersTable">
+            <thead>
+                <tr>
+                    <th style="z-index: 4;">ID</th>
+                    <th>Apellido(s)</th>
+                    <th>Nombre(s)</th>
+                    <th>Empresa</th>
+                    <th>Tipo</th>
+                    <th>Día 1</th>
+                    <th>Día 2</th>
+                    <th>Día 3</th>
+                    <th>Día 4</th>
+                </tr>
+            </thead>
 
-        </div>
-    </section>
+            <tbody>
 
-    <script src="{{ url_for('static', filename='js/statistics.js') }}" type="module"></script>
+            </tbody>
+
+        </table>
+
+        <table class="table table-dark table-striped align-middle text-center" id="exhibitorScansTable">
+            <thead>
+                <tr>
+                    <th>N°</th>
+                    <th>Empresa</th>
+                    <th>Contactos</th>
+                    <th>Citas</th>
+                    <th>Citas Completadas</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+
+    </div>
+</section>
+
+<script src="{{ url_for('static', filename='js/statistics.js') }}" type="module"></script>
 {% endblock %}
