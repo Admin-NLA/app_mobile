@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¿Quién eres?</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Commissioner:wght@200;300;400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <div class="login-card">
+        <h3 class="title">¿Quién eres del stand?</h3>
+        <p class="text-secondary text-center mb-3" style="font-size:0.9rem;">
+            Selecciona tu nombre. Se usará para todos los contactos que registres hoy.
+        </p>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert alert-danger py-2">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% if reps %}
+        <form method="post">
+            <div class="mb-3">
+                <label for="rep_name" class="form-label">Tu nombre</label>
+                <select name="rep_name" id="rep_name" class="form-select" required>
+                    <option value="" disabled selected>Selecciona tu nombre</option>
+                    {% for rep in reps %}
+                    <option value="{{ rep }}">{{ rep }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button class="btn btn-dark w-100 mt-2" type="submit">Continuar</button>
+        </form>
+        {% else %}
+        <div class="alert alert-warning py-2">
+            No encontramos nombres registrados para tu empresa en este evento. Contacta al comité organizador.
+        </div>
+        {% endif %}
+    </div>
+</body>
+
+</html>
