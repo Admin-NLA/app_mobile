@@ -64,10 +64,25 @@
                             {% block b_e_scanner %}<a href="{{ url_for('main.exhibitor_scanner') }}"
                                 class="nav-link">Escáner</a>{% endblock %}
                         </li>
+                        {% if current_user.user_type == "ADMIN" %}
+                        <li class="nav-item dropdown">
+                            {% block b_e_records %}
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                                aria-expanded="false">Contactos</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('main.exhibitor_records') }}">Contactos
+                                        Guardados</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.admin_contacts') }}">Todos los
+                                        Contactos</a></li>
+                            </ul>
+                            {% endblock %}
+                        </li>
+                        {% else %}
                         <li class="nav-item">
-                            {% block b_e_records %}<a href="{{ url_for('main.exhibitor_records') }}"
+                            {% block b_e_records_simple %}<a href="{{ url_for('main.exhibitor_records') }}"
                                 class="nav-link">Contactos</a>{% endblock %}
                         </li>
+                        {% endif %}
                         {% endif %}
                     </ul>
                 </div>

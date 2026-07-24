@@ -153,7 +153,9 @@ def exhibitor_records_post():
     if active_event:
         is_editable_window = is_exhibitor_edit_window(active_event)
         scan_records = (
-            ExhibitorScan.query.options(joinedload(ExhibitorScan.appointment))
+            ExhibitorScan.query.options(
+                joinedload(ExhibitorScan.appointment), joinedload(ExhibitorScan.user)
+            )
             .join(ExhibitorScan.user)
             .filter(
                 User.company == current_user.company,
@@ -253,5 +255,118 @@ def export_exhibitor_records():
         excel_file,
         as_attachment=True,
         download_name=f"Contactos CMC {active_event.location} {active_event.year}",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@main.route("/admin/contacts")
+@login_required
+@require_user_type("ADMIN")
+def admin_contacts():
+    return render_template("admin_contacts.html")
+
+
+@main.route("/admin/contacts/list")
+@login_required
+@require_user_type("ADMIN")
+def admin_contacts_list():
+    active_event = g.active_event
+    records = []
+    event_payload = None
+
+    if active_event:
+        scan_records = (
+            ExhibitorScan.query.options(
+                joinedload(ExhibitorScan.appointment), joinedload(ExhibitorScan.user)
+            )
+            .join(ExhibitorScan.user)
+            .filter(ExhibitorScan.event_id == active_event.event_id)
+            .order_by(User.company.asc(), ExhibitorScan.created_at.asc())
+            .all()
+        )
+        records = [
+            {
+                "e_scan_id": scan.e_scan_id,
+                "day": scan.created_at.strftime("%d/%m/%Y"),
+                "empresa_expositora": scan.user.company,
+                "scanned_a_last_name": scan.scanned_a_last_name,
+                "scanned_a_name": scan.scanned_a_name,
+                "scanned_a_phone": scan.scanned_a_phone,
+                "scanned_a_email": scan.scanned_a_email,
+                "scanned_a_company": scan.scanned_a_company,
+                "scanned_by_rep_name": scan.scanned_by_rep_name,
+                "scanned_by_login": scan.user.name,
+                "appointment_status": (
+                    set_appointment_status(scan.appointment)
+                    if scan.appointment
+                    else "Sin Cita"
+                ),
+            }
+            for scan in scan_records
+        ]
+        event_payload = {
+            "location": active_event.location,
+            "year": active_event.year,
+            "total_records": len(records),
+        }
+
+    return jsonify({"event": event_payload, "records": records})
+
+
+@main.route("/admin/contacts/export")
+@login_required
+@require_user_type("ADMIN")
+def admin_contacts_export():
+    active_event = g.active_event
+
+    if not active_event:
+        return jsonify({"error": "No hay evento activo"}), 404
+
+    scan_records = (
+        ExhibitorScan.query.options(
+            joinedload(ExhibitorScan.appointment), joinedload(ExhibitorScan.user)
+        )
+        .join(ExhibitorScan.user)
+        .filter(ExhibitorScan.event_id == active_event.event_id)
+        .order_by(User.company.asc(), ExhibitorScan.created_at.asc())
+        .all()
+    )
+
+    records = [
+        {
+            "EMPRESA EXPOSITORA": scan.user.company,
+            "DIA": scan.created_at.strftime("%d/%m/%Y"),
+            "NOMBRE(S)": scan.scanned_a_name,
+            "APELLIDO(S)": scan.scanned_a_last_name,
+            "TELEFONO": scan.scanned_a_phone,
+            "EMAIL": scan.scanned_a_email,
+            "EMPRESA": scan.scanned_a_company,
+            "ESCANEADO POR": scan.scanned_by_rep_name or scan.user.name,
+            "NOTAS": scan.notes,
+            "CITA": "✓" if scan.appointment else "",
+            "FECHA CITA": scan.appointment.date if scan.appointment else "",
+            "ESTADO DE LA CITA": (
+                set_appointment_status(scan.appointment) if scan.appointment else "---"
+            ),
+            "REAGENDADA": (
+                "---"
+                if not scan.appointment
+                else (
+                    "✓"
+                    if (scan.appointment.created_at != scan.appointment.updated_at)
+                    else ""
+                )
+            ),
+        }
+        for scan in scan_records
+    ]
+    excel_file = create_records_excel_file(
+        records, f"{active_event.location} {active_event.year} - Todas las Marcas"
+    )
+
+    return send_file(
+        excel_file,
+        as_attachment=True,
+        download_name=f"Contactos CMC Consolidado {active_event.location} {active_event.year}",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
