@@ -20,6 +20,7 @@ from .events import (
 )
 from .excel_writer import create_records_excel_file
 from .appointments import set_appointment_status
+from . import db
 
 main = Blueprint("main", __name__)
 
@@ -272,7 +273,11 @@ def admin_contacts():
         {"id": str(event_id), "name": f"{location} {year}"}
         for event_id, location, year in event_records
     ]
-    return render_template("admin_contacts.html", event_files=event_files)
+    active_event = g.active_event
+    active_event_id = str(active_event.event_id) if active_event else ""
+    return render_template(
+        "admin_contacts.html", event_files=event_files, active_event_id=active_event_id
+    )
 
 
 @main.route("/admin/contacts/list")
@@ -380,4 +385,69 @@ def admin_contacts_export():
         as_attachment=True,
         download_name=f"Contactos CMC Consolidado {event.location} {event.year}",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@main.route("/admin/contacts/purge", methods=["POST"])
+@login_required
+@require_user_type("ADMIN")
+def admin_contacts_purge():
+    data = request.get_json() or {}
+    event_id = data.get("event_id")
+    confirmation_name = (data.get("confirmation_name") or "").strip()
+
+    event = Event.query.get(event_id) if event_id else None
+    if not event:
+        return jsonify({"success": False, "message": "Sede no encontrada"}), 404
+
+    active_event = g.active_event
+    if active_event and active_event.event_id == event.event_id:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "No puedes purgar la sede activa. Espera a que termine su ventana de edición.",
+                }
+            ),
+            400,
+        )
+
+    expected_name = f"{event.location} {event.year}"
+    if confirmation_name != expected_name:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": f'El nombre escrito no coincide con "{expected_name}"',
+                }
+            ),
+            400,
+        )
+
+    e_scan_ids = [
+        row.e_scan_id
+        for row in ExhibitorScan.query.with_entities(ExhibitorScan.e_scan_id)
+        .filter(ExhibitorScan.event_id == event.event_id)
+        .all()
+    ]
+
+    deleted_appointments = 0
+    if e_scan_ids:
+        deleted_appointments = Appointment.query.filter(
+            Appointment.e_scan_id.in_(e_scan_ids)
+        ).delete(synchronize_session=False)
+
+    deleted_contacts = ExhibitorScan.query.filter(
+        ExhibitorScan.event_id == event.event_id
+    ).delete(synchronize_session=False)
+
+    db.session.commit()
+
+    return jsonify(
+        {
+            "success": True,
+            "message": f"Se eliminaron {deleted_contacts} contactos y {deleted_appointments} citas de {expected_name}",
+            "deleted_contacts": deleted_contacts,
+            "deleted_appointments": deleted_appointments,
+        }
     )

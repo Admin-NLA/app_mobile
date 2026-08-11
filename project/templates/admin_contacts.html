@@ -10,7 +10,7 @@
 
 <section class="content-section">
 
-    <div class="container-fluid d-flex flex-row mb-3 gap-3">
+    <div class="container-fluid d-flex flex-row mb-3 gap-3" data-active-event-id="{{ active_event_id }}">
         <select class="form-select form-select-sm" id="eventSelector">
             <option selected disabled hidden value="">Escoge una Sede</option>
             {% for file in event_files %}
@@ -18,6 +18,7 @@
             {% endfor %}
         </select>
         <button class="btn btn-sm btn-success" id="exportAllBtn" disabled>Exportar Todo</button>
+        <button class="btn btn-sm btn-outline-danger" id="purgeBtn" disabled>Purgar Contactos de esta Sede</button>
     </div>
 
     <div class="d-flex justify-content-between align-items-center mx-3 mb-3 flex-wrap gap-2">
@@ -53,6 +54,7 @@
 
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{{ url_for('static', filename='js/admin_contacts.js') }}"></script>
 
 {% endblock %}
