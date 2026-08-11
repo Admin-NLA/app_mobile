@@ -1,3 +1,4 @@
+const eventSelector = document.getElementById("eventSelector");
 const activeEventLabel = document.getElementById("activeEventLabel");
 const companyFilter = document.getElementById("companyFilter");
 const searchInput = document.getElementById("searchInput");
@@ -5,6 +6,7 @@ const allContactsBody = document.getElementById("allContactsBody");
 const exportAllBtn = document.getElementById("exportAllBtn");
 
 let allRecords = [];
+let selectedEventId = "";
 
 function renderRows() {
     const selectedCompany = companyFilter.value;
@@ -53,14 +55,24 @@ function populateCompanyFilter() {
     });
 }
 
-function loadAllContacts() {
-    fetch("/admin/contacts/list")
+function loadContactsForEvent(eventId) {
+    if (!eventId) {
+        allRecords = [];
+        allContactsBody.innerHTML = "";
+        activeEventLabel.textContent = "Selecciona una sede para ver sus contactos.";
+        exportAllBtn.disabled = true;
+        return;
+    }
+
+    fetch(`/admin/contacts/list?event_id=${encodeURIComponent(eventId)}`)
         .then((response) => response.json())
         .then((data) => {
             if (data.event) {
                 activeEventLabel.innerHTML = `<strong>${data.event.total_records} Contactos</strong> para: <strong>${data.event.location} ${data.event.year}</strong> (todas las marcas)`;
+                exportAllBtn.disabled = data.event.total_records === 0;
             } else {
-                activeEventLabel.textContent = "No hay evento activo para la fecha de hoy.";
+                activeEventLabel.textContent = "No se encontró esa sede.";
+                exportAllBtn.disabled = true;
             }
             allRecords = data.records || [];
             populateCompanyFilter();
@@ -68,11 +80,15 @@ function loadAllContacts() {
         });
 }
 
+eventSelector.addEventListener("change", () => {
+    selectedEventId = eventSelector.value;
+    loadContactsForEvent(selectedEventId);
+});
+
 companyFilter.addEventListener("change", renderRows);
 searchInput.addEventListener("input", renderRows);
 
 exportAllBtn.addEventListener("click", () => {
-    window.location.href = "/admin/contacts/export";
+    if (!selectedEventId) return;
+    window.location.href = `/admin/contacts/export?event_id=${encodeURIComponent(selectedEventId)}`;
 });
-
-loadAllContacts();

@@ -263,24 +263,34 @@ def export_exhibitor_records():
 @login_required
 @require_user_type("ADMIN")
 def admin_contacts():
-    return render_template("admin_contacts.html")
+    event_records = (
+        Event.query.with_entities(Event.event_id, Event.location, Event.year)
+        .order_by(Event.start_date.desc())
+        .all()
+    )
+    event_files = [
+        {"id": str(event_id), "name": f"{location} {year}"}
+        for event_id, location, year in event_records
+    ]
+    return render_template("admin_contacts.html", event_files=event_files)
 
 
 @main.route("/admin/contacts/list")
 @login_required
 @require_user_type("ADMIN")
 def admin_contacts_list():
-    active_event = g.active_event
+    event_id = request.args.get("event_id", type=int)
+    event = Event.query.get(event_id) if event_id else None
     records = []
     event_payload = None
 
-    if active_event:
+    if event:
         scan_records = (
             ExhibitorScan.query.options(
                 joinedload(ExhibitorScan.appointment), joinedload(ExhibitorScan.user)
             )
             .join(ExhibitorScan.user)
-            .filter(ExhibitorScan.event_id == active_event.event_id)
+            .filter(ExhibitorScan.event_id == event.event_id)
             .order_by(User.company.asc(), ExhibitorScan.created_at.asc())
             .all()
         )
@@ -305,8 +315,8 @@ def admin_contacts_list():
             for scan in scan_records
         ]
         event_payload = {
-            "location": active_event.location,
-            "year": active_event.year,
+            "location": event.location,
+            "year": event.year,
             "total_records": len(records),
         }
 
@@ -317,17 +327,18 @@ def admin_contacts_list():
 @login_required
 @require_user_type("ADMIN")
 def admin_contacts_export():
-    active_event = g.active_event
+    event_id = request.args.get("event_id", type=int)
+    event = Event.query.get(event_id) if event_id else None
 
-    if not active_event:
-        return jsonify({"error": "No hay evento activo"}), 404
+    if not event:
+        return jsonify({"error": "Selecciona una sede"}), 404
 
     scan_records = (
         ExhibitorScan.query.options(
             joinedload(ExhibitorScan.appointment), joinedload(ExhibitorScan.user)
         )
         .join(ExhibitorScan.user)
-        .filter(ExhibitorScan.event_id == active_event.event_id)
+        .filter(ExhibitorScan.event_id == event.event_id)
         .order_by(User.company.asc(), ExhibitorScan.created_at.asc())
         .all()
     )
@@ -361,12 +372,12 @@ def admin_contacts_export():
         for scan in scan_records
     ]
     excel_file = create_records_excel_file(
-        records, f"{active_event.location} {active_event.year} - Todas las Marcas"
+        records, f"{event.location} {event.year} - Todas las Marcas"
     )
 
     return send_file(
         excel_file,
         as_attachment=True,
-        download_name=f"Contactos CMC Consolidado {active_event.location} {active_event.year}",
+        download_name=f"Contactos CMC Consolidado {event.location} {event.year}",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
