@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Eventos{% endblock %}
+
+{% block header_title %}
+<h1 class="mb-3">Gestión de Eventos</h1>
+{% endblock %}
+
+{% block content %}
+
+<section class="content-section">
+
+    <p class="text-muted mx-3">
+        El evento marcado como <strong>"Activo ahora"</strong> es el que determina qué ve cada pantalla de la app
+        (Estadísticas, Escáner, Contactos, etc.). Por defecto, esto se calcula automáticamente según la fecha
+        de hoy y una ventana de 30 días después de cada evento. Puedes forzar manualmente cuál está activo,
+        o deshabilitar un evento para que nunca sea elegido automáticamente.
+    </p>
+
+    <div class="table-responsive mx-2 overflow-auto">
+        <table class="table table-dark table-striped align-middle text-center" id="eventsTable">
+            <thead>
+                <tr>
+                    <th>Sede</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Estado</th>
+                    <th>Activo Ahora</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="eventsBody">
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ url_for('static', filename='js/admin_events.js') }}"></script>
+
+{% endblock %}

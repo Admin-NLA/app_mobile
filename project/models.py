@@ -44,6 +44,7 @@ class Event(db.Model):
     year = db.Column(db.SmallInteger, nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
+    manual_status = db.Column(db.Boolean, nullable=True)  # ---- NUEVO AJUSTE -----
 
     e_scans_ev = db.relationship(
         "ExhibitorScan", back_populates="event", cascade="all, delete-orphan"

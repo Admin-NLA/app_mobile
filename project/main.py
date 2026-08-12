@@ -17,6 +17,7 @@ from .events import (
     get_active_event,
     get_active_event_stats_preview,
     is_exhibitor_edit_window,
+    invalidate_active_event_cache,
 )
 from .excel_writer import create_records_excel_file
 from .appointments import set_appointment_status
@@ -451,3 +452,105 @@ def admin_contacts_purge():
             "deleted_appointments": deleted_appointments,
         }
     )
+
+
+# ----------- NUEVA RUTA PARA CITAS------------
+@main.route("/exhibitor-appointments")
+@login_required
+@require_user_type("ADMIN", "EXHIBITOR")
+def exhibitor_appointments():
+    active_event = g.active_event
+    appointments = []
+
+    if active_event:
+        scan_records = (
+            ExhibitorScan.query.options(joinedload(ExhibitorScan.appointment))
+            .join(ExhibitorScan.user)
+            .filter(
+                User.company == current_user.company,
+                ExhibitorScan.event_id == active_event.event_id,
+            )
+            .all()
+        )
+        for scan in scan_records:
+            if scan.appointment and scan.appointment.date and scan.appointment.hour:
+                appointments.append(
+                    {
+                        "appointment_id": scan.appointment.appointment_id,
+                        "date": scan.appointment.date,
+                        "hour": scan.appointment.hour,
+                        "contact_name": f"{scan.scanned_a_last_name} {scan.scanned_a_name}".strip(),
+                    }
+                )
+
+    return jsonify({"appointments": appointments})
+
+
+@main.route("/admin/events")
+@login_required
+@require_user_type("ADMIN")
+def admin_events():
+    return render_template("admin_events.html")
+
+
+@main.route("/admin/events/list")
+@login_required
+@require_user_type("ADMIN")
+def admin_events_list():
+    events = Event.query.order_by(Event.start_date.desc()).all()
+    active_event = get_active_event()
+    active_event_id = active_event.event_id if active_event else None
+
+    payload = []
+    for event in events:
+        if event.manual_status is True:
+            manual_label = "Forzado Activo"
+        elif event.manual_status is False:
+            manual_label = "Deshabilitado"
+        else:
+            manual_label = "Automático"
+
+        payload.append(
+            {
+                "event_id": event.event_id,
+                "location": event.location,
+                "year": event.year,
+                "start_date": event.start_date.strftime("%d/%m/%Y"),
+                "end_date": event.end_date.strftime("%d/%m/%Y"),
+                "manual_status": event.manual_status,
+                "manual_label": manual_label,
+                "is_effective_active": event.event_id == active_event_id,
+            }
+        )
+
+    return jsonify({"events": payload})
+
+
+@main.route("/admin/events/set-status", methods=["POST"])
+@login_required
+@require_user_type("ADMIN")
+def admin_events_set_status():
+    data = request.get_json() or {}
+    event_id = data.get("event_id")
+    action = data.get("action")
+
+    event = Event.query.get(event_id) if event_id else None
+    if not event:
+        return jsonify({"success": False, "message": "Evento no encontrado"}), 404
+
+    if action == "activate":
+        Event.query.filter(Event.manual_status.is_(True)).update(
+            {"manual_status": None}
+        )
+        event.manual_status = True
+    elif action == "disable":
+        event.manual_status = False
+    elif action == "auto":
+        event.manual_status = None
+    else:
+        return jsonify({"success": False, "message": "Acción inválida"}), 400
+
+    db.session.commit()
+    invalidate_active_event_cache()
+
+    return jsonify({"success": True, "message": "Estado actualizado correctamente"})

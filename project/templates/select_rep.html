@@ -57,6 +57,8 @@
             No encontramos nombres registrados para tu empresa en este evento. Contacta al comité organizador.
         </div>
         {% endif %}
+
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-secondary w-100 mt-3">Cerrar Sesión</a>
     </div>
 </body>
 

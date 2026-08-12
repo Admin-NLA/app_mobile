@@ -57,6 +57,9 @@
                         <li class="nav-item">
                             <a href="{{ url_for('auth.users') }}" class="nav-link">Usuarios</a>
                         </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('main.admin_events') }}" class="nav-link">Eventos</a>
+                        </li>
                         {% endif %}
                         {% endif %}
                         {% if current_user.user_type in ("ADMIN", "EXHIBITOR") %}
@@ -104,6 +107,11 @@
 
     {% block content %}
     {% endblock %}
+
+    {% if current_user.user_type in ("ADMIN", "EXHIBITOR") %}
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/reminders.js') }}"></script>
+    {% endif %}
 
 </body>
 
