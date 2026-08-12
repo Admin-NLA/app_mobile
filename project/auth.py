@@ -15,7 +15,7 @@ from datetime import date
 from flask_login import login_user, logout_user, login_required, current_user
 from functools import wraps
 
-from .models import User, Stats
+from .models import User, Stats, Event
 from .events import get_active_event
 from . import db
 
@@ -36,6 +36,31 @@ def require_user_type(*allowed_types):
     return decorator
 
 
+def _build_event_companies_index():
+    records = (
+        Stats.query.with_entities(Stats.stats, Event.location, Event.year)
+        .join(Event, Event.event_id == Stats.event_id)
+        .all()
+    )
+    index = []
+    for stats_json, location, year in records:
+        companies = stats_json.get("exhibitor_companies", []) if stats_json else []
+        companies_upper = {c.strip().upper() for c in companies}
+        index.append((f"{location} {year}", companies_upper))
+    return index
+
+
+def _get_sedes_for_company(company, event_companies_index):
+    if not company:
+        return []
+    company_upper = company.strip().upper()
+    return [
+        name
+        for name, companies_upper in event_companies_index
+        if company_upper in companies_upper
+    ]
+
+
 @auth.route("/login")
 def login():
     return render_template("login.html")
@@ -51,6 +76,10 @@ def login_post():
 
     if not user or not user.check_password(password):
         flash("Error en Credenciales: Intenta de Nuevo")
+        return redirect(url_for("auth.login"))
+
+    if not user.is_active_user:
+        flash("Esta cuenta está desactivada. Contacta al administrador.")
         return redirect(url_for("auth.login"))
 
     login_user(user, remember=remember)
@@ -103,7 +132,12 @@ def signup():
     companies = []
     if stats and stats.stats:
         companies = stats.stats.get("exhibitor_companies", [])
-    return render_template("signup.html", companies=companies)
+    sede_label = (
+        f"{active_event.location} {active_event.year}"
+        if active_event
+        else "Sin evento activo"
+    )
+    return render_template("signup.html", companies=companies, sede_label=sede_label)
 
 
 @auth.route("/signup", methods=["POST"])
@@ -112,6 +146,7 @@ def signup():
 def signup_post():
     data = request.get_json()
     username = data.get("username")
+    display_name = data.get("displayName")
     email = data.get("email")
     company = data.get("companySelector")
     password = data.get("password")
@@ -122,7 +157,13 @@ def signup_post():
     if user:
         return jsonify({"success": False, "message": "Usuario ya registrado"}), 400
 
-    new_user = User(email=email, name=username, company=company, user_type=user_type)
+    new_user = User(
+        email=email,
+        name=username,
+        display_name=display_name,
+        company=company,
+        user_type=user_type,
+    )
     new_user.set_password(password)
     db.session.add(new_user)
     db.session.commit()
@@ -150,14 +191,18 @@ def users():
 @require_user_type("ADMIN")
 def users_list():
     users = User.query.all()
+    event_companies_index = _build_event_companies_index()
     return jsonify(
         [
             {
                 "id": u.user_id,
                 "name": u.name,
+                "display_name": u.display_name or "",
                 "email": u.email,
                 "company": u.company or "",
                 "user_type": u.user_type,
+                "is_active_user": u.is_active_user,
+                "sedes": _get_sedes_for_company(u.company, event_companies_index),
             }
             for u in users
         ]
@@ -176,6 +221,7 @@ def edit_user(user_id):
     data = request.get_json()
     user = User.query.get_or_404(user_id)
     user.name = data.get("name", user.name)
+    user.display_name = data.get("display_name", user.display_name)
     user.email = data.get("email", user.email)
     user.company = data.get("company", user.company)
     user.user_type = data.get("user_type", user.user_type)
@@ -217,6 +263,39 @@ def bulk_role():
     db.session.commit()
     return jsonify(
         {"success": True, "message": f"Rol actualizado para {len(ids)} usuario(s)"}
+    )
+
+
+@auth.route("/admin/users/activate", methods=["POST"])
+@login_required
+@require_user_type("ADMIN")
+def activate_users():
+    data = request.get_json()
+    ids = data.get("ids", [])
+    User.query.filter(User.user_id.in_(ids)).update(
+        {"is_active_user": True}, synchronize_session=False
+    )
+    db.session.commit()
+    return jsonify({"success": True, "message": f"{len(ids)} usuario(s) activado(s)"})
+
+
+@auth.route("/admin/users/deactivate", methods=["POST"])
+@login_required
+@require_user_type("ADMIN")
+def deactivate_users():
+    data = request.get_json()
+    ids = data.get("ids", [])
+    if current_user.user_id in ids:
+        return (
+            jsonify({"success": False, "message": "No puedes desactivarte a ti mismo"}),
+            400,
+        )
+    User.query.filter(User.user_id.in_(ids)).update(
+        {"is_active_user": False}, synchronize_session=False
+    )
+    db.session.commit()
+    return jsonify(
+        {"success": True, "message": f"{len(ids)} usuario(s) desactivado(s)"}
     )
 
 

@@ -10,10 +10,12 @@ class User(UserMixin, db.Model):
 
     user_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), unique=True, nullable=False)
+    display_name = db.Column(db.String(255), nullable=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String, nullable=False)
     user_type = db.Column(db.String(255), nullable=False)
     company = db.Column(db.String(255))
+    is_active_user = db.Column(db.Boolean, nullable=False, default=True)
 
     e_scans = db.relationship(
         "ExhibitorScan", back_populates="user", cascade="all, delete-orphan"

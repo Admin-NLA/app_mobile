@@ -91,7 +91,8 @@
                 </div>
 
                 <div class="navbar-nav">
-                    <span class="navbar-text text-white">Usuario: {{ current_user.name }}</span>
+                    <span class="navbar-text text-white">Usuario: {{ current_user.display_name or current_user.name
+                        }}</span>
                     <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light ms-3">Cerrar Sesión</a>
                 </div>
             </div>
