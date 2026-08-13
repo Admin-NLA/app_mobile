@@ -11,19 +11,20 @@ load_dotenv()
 db = SQLAlchemy()
 socketio = SocketIO(cors_allowed_origins="*", logger=True, engineio_logger=True)
 
+
 def create_app():
 
     app = Flask(__name__, template_folder="templates", static_folder="static")
-    app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
-        "pool_size": 10,
-        "max_overflow": 20
+        "pool_size": 20,
+        "max_overflow": 30,
     }
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SERVICE_TOKEN'] = os.getenv("SERVICE_TOKEN")
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SERVICE_TOKEN"] = os.getenv("SERVICE_TOKEN")
     CORS(app)
 
     db.init_app(app)
@@ -33,21 +34,25 @@ def create_app():
     from . import sockets
 
     login_manager = LoginManager()
-    login_manager.login_view = 'auth.login'
+    login_manager.login_view = "auth.login"
     login_manager.init_app(app)
 
     from .models import User
+
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
-    
+
     from .auth import auth as auth_bp
+
     app.register_blueprint(auth_bp)
 
     from .main import main as main_bp
+
     app.register_blueprint(main_bp)
 
     from .scan import scan as scan_bp
+
     app.register_blueprint(scan_bp)
 
     from .events import set_active_event_for_request, get_active_event_stats_preview
@@ -60,8 +65,8 @@ def create_app():
     @app.context_processor
     def inject_active_event_into_templates():
         return {
-            "active_event": g.get("active_event"), 
-            "active_event_stats_preview_today": g.get("active_event_stats_preview")
+            "active_event": g.get("active_event"),
+            "active_event_stats_preview_today": g.get("active_event_stats_preview"),
         }
 
     return app
