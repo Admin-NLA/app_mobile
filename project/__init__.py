@@ -20,8 +20,8 @@ def create_app():
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
-        "pool_size": 20,
-        "max_overflow": 30,
+        "pool_size": 40,
+        "max_overflow": 60,
     }
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SERVICE_TOKEN"] = os.getenv("SERVICE_TOKEN")
