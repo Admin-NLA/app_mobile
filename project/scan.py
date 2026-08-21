@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, g, Response
+from flask import Blueprint, request, jsonify, g, Response, session
 from flask_login import login_required, current_user
 from uuid import uuid4
 from datetime import datetime, date, timedelta
